@@ -59,7 +59,25 @@ function startAcademyCloud(){
  logoutButton.setAttribute('aria-label','Sign out of TIB Academy');
  logoutButton.style.cssText='display:none;width:auto;min-width:92px;margin:0;padding:9px 15px;border:1px solid #a6c1df;border-radius:7px;background:#fff;color:#17355e;font-weight:650;cursor:pointer;flex-shrink:0';
  const academyHeader=document.querySelector('header');
- if(academyHeader){academyHeader.style.display='flex';academyHeader.style.alignItems='flex-start';academyHeader.style.justifyContent='space-between';academyHeader.style.gap='14px';const headingWrap=document.createElement('div');while(academyHeader.firstChild)headingWrap.appendChild(academyHeader.firstChild);academyHeader.append(headingWrap,logoutButton);}
+ if(academyHeader){
+  academyHeader.style.display='flex';academyHeader.style.alignItems='center';academyHeader.style.justifyContent='space-between';academyHeader.style.gap='16px';academyHeader.style.flexWrap='wrap';
+  const headingWrap=document.createElement('div');headingWrap.style.flex='1 1 400px';
+  while(academyHeader.firstChild)headingWrap.appendChild(academyHeader.firstChild);
+  const accountControls=document.createElement('div');accountControls.id='academyAccountControls';
+  accountControls.style.cssText='display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;max-width:100%';
+  const accountStatus=document.getElementById('cloudState');
+  accountStatus.style.cssText='font-size:12px;color:#e5efff;max-width:210px;overflow-wrap:anywhere';
+  const authPanel=document.getElementById('authPanel');
+  authPanel.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0;justify-content:flex-end';
+  for(const id of ['cloudEmail','cloudPassword']){
+    const field=document.getElementById(id);field.style.cssText='width:170px;min-width:140px;max-width:100%;padding:8px;border-radius:6px;color:#182b45;background:white';
+  }
+  for(const id of ['cloudLogin','cloudReset']){
+    const btn=document.getElementById(id);btn.style.cssText='display:inline-block;width:auto;margin:0;padding:9px 11px;border-radius:6px;white-space:nowrap;color:#17355e;background:white;cursor:pointer';
+  }
+  accountControls.append(authPanel,accountStatus,logoutButton);
+  academyHeader.append(headingWrap,accountControls);
+}
  else bar.prepend(logoutButton);
 
  const el=id=>document.getElementById(id),notice=s=>el('cloudState').textContent=s;
