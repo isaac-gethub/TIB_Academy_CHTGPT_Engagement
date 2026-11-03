@@ -249,6 +249,29 @@ function startAcademyCloud(){
  loginSubtitle.style.cssText='color:#52647b;margin:0 0 20px';
  const loginStatus=document.getElementById('cloudState');
  loginStatus.style.cssText='display:block;font-size:13px;color:#536b83;margin:12px 0;overflow-wrap:anywhere';
+ // Independent startup watchdog: reports failures even if later initialization throws.
+ let academyStartupResolved=false;
+ const startupTimer=setTimeout(()=>{
+   if(!academyStartupResolved && loginStatus.textContent.includes('Connecting to Supabase')){
+     loginStatus.textContent='Academy sign-in initialization has stalled. Please report this message to support (startup timeout).';
+   }
+ },15000);
+ window.addEventListener('error',event=>{
+   if(!academyStartupResolved){
+     loginStatus.textContent='Academy initialization error: '+(event.message||'Unexpected script error')+'. Please report this message.';
+   }
+ });
+ window.addEventListener('unhandledrejection',event=>{
+   if(!academyStartupResolved){
+     loginStatus.textContent='Academy initialization request failed: '+(event.reason?.message||'Unexpected connection error')+'. Please report this message.';
+   }
+ });
+ const startupStatusObserver=new MutationObserver(()=>{
+   if(!loginStatus.textContent.includes('Connecting to Supabase')){
+     academyStartupResolved=true;clearTimeout(startupTimer);startupStatusObserver.disconnect();
+   }
+ });
+ startupStatusObserver.observe(loginStatus,{childList:true,characterData:true,subtree:true});
  const authPanel=document.getElementById('authPanel');
  authPanel.style.cssText='display:flex;flex-direction:column;gap:12px;margin:0';
  for(const id of ['cloudEmail','cloudPassword']){
