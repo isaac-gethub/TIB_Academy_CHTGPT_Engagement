@@ -283,7 +283,18 @@ function startAcademyCloud(){
    window.academyTrainingMode=trainingMode;
    if(typeof show==='function' && typeof current!=='undefined')show(current);
    const hands=trainingMode==='hands_on';
-   modeBanner.textContent=hands?'TRAINING VERSION: SAP HANDS-ON — Authorized SAP access required':'TRAINING VERSION: SAP SIMULATION — No SAP system access required';
+   modeBanner.replaceChildren();
+   const status=document.createElement('strong');
+   status.textContent=hands?'TRAINING VERSION: SAP HANDS-ON — Default course with real SAP training access':'TRAINING VERSION: SAP SIMULATION — Alternative assigned training mode';
+   modeBanner.append(status);
+   if(user?.email?.toLowerCase()==='isaac.babsng@gmail.com'){
+     const manage=document.createElement('button');
+     manage.type='button';
+     manage.textContent='Manage training versions';
+     manage.style.cssText='display:inline-block;width:auto;margin:0 0 0 18px;padding:7px 12px;background:#0b7778;color:white;border:0;border-radius:6px;font-weight:750;cursor:pointer';
+     manage.onclick=()=>adminPanel.scrollIntoView({behavior:'smooth',block:'start'});
+     modeBanner.append(manage);
+   }
    modeInstructions.innerHTML=hands
    ?'<h2>SAP Hands-On Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>Use the actual SAP training system available to you. Follow each module\'s SAP area, procedure and evidence requirements. Perform only transactions and data exports authorized by your instructor. Record actual transaction codes, system/client, selection variants, dates, record counts, screenshots and export filenames in the workpaper. Analyse real training-system evidence, document exceptions, then submit for Lead review.</p><p><strong>Important:</strong> This Academy does not connect directly to SAP. Open SAP GUI/Fiori separately. Never upload confidential production or client data without explicit authorization.</p>'
    :'<h2>SAP Simulation Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>No SAP login is required. Treat each module as a fictional SAP case. Study the SAP procedures as read-only demonstrations; do not attempt live transactions. Use fictional company, system/client, selection criteria, sample evidence identifiers, record counts and filenames. Analyse the scenario, record assumptions and conclusions in the same workpaper, and submit to your Lead for review.</p><p><strong>Important:</strong> Clearly mark every simulated evidence reference SAMPLE or SIMULATED. Do not present it as an actual SAP extraction.</p>';
@@ -291,7 +302,10 @@ function startAcademyCloud(){
  async function loadTrainingMode(){
    if(!user)return;
    if(user.email?.toLowerCase()==='isaac.babsng@gmail.com'){
-     adminPanel.style.display='block';await loadAssignments();
+     adminPanel.style.display='block';
+     const emailField=document.getElementById('academyTraineeEmail');
+     if(emailField&&!emailField.value)emailField.value=user.email;
+     await loadAssignments();
    }else adminPanel.style.display='none';
    const {data,error}=await client.from('tib_academy_training_modes').select('mode').eq('trainee_id',user.id).maybeSingle();
    if(error){notice('Unable to load assigned training version: '+error.message);showAcademy(false);return;}
@@ -312,7 +326,7 @@ function startAcademyCloud(){
    if(!email)return document.getElementById('academyAdminMessage').textContent='Enter a trainee email.';
    const {data,error}=await client.rpc('tib_academy_assign_mode',{p_email:email,p_mode:mode});
    document.getElementById('academyAdminMessage').textContent=error?'Assignment failed: '+error.message:data;
-   if(!error)await loadAssignments();
+   if(!error){await loadAssignments();if(email.toLowerCase()===user?.email?.toLowerCase())await loadTrainingMode();}
  };
  applyTrainingMode('hands_on');
  const academyMain=document.querySelector('main');
