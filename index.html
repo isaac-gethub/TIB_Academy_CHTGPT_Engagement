@@ -416,14 +416,22 @@ const names=['Understand','Execute simulation','Capture evidence','Analyse','Con
 let step=0,active='';
 const bar=document.getElementById('academyWizard');if(!bar)return;
 const instruction=document.createElement('section');instruction.id='academyStepInstructions';instruction.style.cssText='background:#f0f6ff;border:1px solid #b5cce5;border-radius:9px;padding:14px;margin:12px 0';content.before(instruction);
-const instructions=[
-['Understand the test','Read the module title and test objective. Identify the control risk, scope, system and reporting period. Review the source lesson only when needed. Then select Next.'],
-['Execute the SAP simulation','1. Open Selection. 2. Review or enter the fictional selection criteria. 3. Press Execute (F8). 4. Inspect Output and note the record count and any exceptions. 5. Record the sample evidence reference before selecting Next.'],
-['Capture evidence','Enter the test objective and evidence IDs. Include the simulated transaction, system/client, selection criteria, period, record count and evidence reference. Add evidence-register rows, then select Next.'],
-['Analyse the results','Describe what the simulated records show. Record any exceptions separately, distinguishing observed facts from assumptions. Then select Next.'],
-['Conclude and validate','Write an evidence-supported conclusion. Record open items, responsible owners and the decision required from the Controls Lead. Complete the evidence checklist and check readiness.'],
-['Save and submit','Review the completed entries, save the workpaper to the cloud when signed in, and submit for Controls Lead review. Check the confirmation before leaving this module.']
+const exercise=document.createElement('section');exercise.id='academyStepPractice';exercise.style.cssText='background:#fff;border:1px solid #b5cce5;border-radius:9px;padding:14px;margin:12px 0';instruction.after(exercise);
+const stepSpec=[
+ {title:'Understand the test',learn:'Identify the control objective, business risk, SAP scope and evidence needed before beginning.',demo:'Read the selected module title. Define what could go wrong, which system or process is in scope, and what evidence would demonstrate the control. The full source lesson remains available as a reference.',task:'In your own words, identify the risk and intended control outcome. Do not invent an SAP result.',check:'Can you explain the objective, risk, scope and expected evidence?'},
+ {title:'Execute the SAP simulation',learn:'Follow the transaction workflow and interpret the simulated output.',demo:'Open the simulated SAP transaction, select the relevant criteria, execute (F8), then inspect the displayed results. These are fictional training records, not a live SAP export.',task:'Note the system/client, selection values, period, displayed count and any exception. Record the simulator evidence reference before continuing.',check:'Have you executed the simulated transaction and reviewed its output?'},
+ {title:'Capture evidence',learn:'Create a reproducible evidence trail using the workpaper and evidence register.',demo:'Illustrative evidence format: EV-TF01-01 | NWBC | GLOBAL ruleset | TIB-SIM client 100 | simulated output | record count: copy the actual simulator result. Adapt the ID and transaction to the selected module.',task:'Complete Objective / scope, Evidence IDs and the evidence register. Enter the actual simulated count rather than a guessed number.',check:'Does every evidence reference identify the source, selections, count and date?'},
+ {title:'Analyse the results',learn:'Distinguish observations, exceptions and assumptions.',demo:'Example structure: “The simulated output returned [count] records for [selection]. [Number] were flagged for review. This indicates [limited conclusion].” Fill the brackets using the actual simulation; do not assert unobserved results.',task:'Write the facts in Result — facts and figures. Record deviations in Exceptions; if none are shown, say no exceptions were observed in this simulated sample.',check:'Are the findings supported by the evidence and clearly separated from assumptions?'},
+ {title:'Conclude and validate',learn:'Produce a defensible conclusion and identify unresolved matters.',demo:'Example structure: “Based on simulated evidence [reference], the test [met/did not meet/cannot yet establish] its objective because [reason]. Open item: [owner and due date].”',task:'Complete Conclusion, Open items and Decision needed from the Lead. Review the checklist and run Check readiness for Lead review. Lead review comments are completed by the reviewer, not the trainee.',check:'Is the conclusion traceable to evidence, with unresolved issues assigned?'},
+ {title:'Save and submit',learn:'Preserve the finished workpaper and send it for review.',demo:'Save draft protects local progress; Save current workpaper to cloud stores a signed-in copy. Submit for Lead review is the final workflow action. JSON export is an optional backup, not a substitute for submission.',task:'Check your entries, save to cloud when signed in, submit for Lead review, and verify the confirmation or error message.',check:'Have you confirmed cloud save and submission, rather than relying only on a local draft?'}
 ];
+function makeNode(tag,text){const e=document.createElement(tag);e.textContent=text;return e;}
+function updateGuide(){
+ const spec=stepSpec[step],id=(heading.textContent.match(/(?:TF|CV)-\\d{2}/)||[])[0]||'this module';
+ const transaction=(document.querySelector('#sapSimulationLab')?.textContent||'').match(/(?:NWBC|SUIM|SE16N|SM37|STMS|SM51|SM59|DBACOCKPIT|FAGLL03|RZ11|OB52|OB28)/)?.[0]||'the module simulator';
+ instruction.replaceChildren(makeNode('h3','1. Learn — '+spec.title),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
+ exercise.replaceChildren(makeNode('h4','3. Your exercise'),makeNode('p',spec.task),makeNode('h4','4. Completion check'),makeNode('p',spec.check));
+}
 function tag(){
 let lesson=document.getElementById('academyLessonDetails');
 if(!lesson){
@@ -441,7 +449,7 @@ for(const [id,n] of Object.entries({stage:2,objective:2,evidence:2,result:3,exce
 for(const [id,n] of Object.entries({evidenceRows:2,addEvidence:2,checks:4,validate:4,quality:4})){let e=document.getElementById(id);if(e)(e.closest('.actions')||e).dataset.wstep=n;}
 for(const e of work.querySelectorAll(':scope > h3'))e.dataset.wstep=/Evidence register/.test(e.textContent)?2:/Evidence capture checklist/.test(e.textContent)?4:2;
 }
-function paint(){tag();const item=instructions[step];instruction.replaceChildren();const h=document.createElement('h3');h.textContent='Instructions — '+item[0];h.style.margin='0 0 8px';const p=document.createElement('p');p.textContent=item[1];p.style.margin='0';instruction.append(h,p);for(const parent of [content,work])for(const e of parent.children){let on=Number(e.dataset.wstep)===step;e.hidden=!on;e.classList.toggle('wizard-active',on);}
+function paint(){tag();updateGuide();for(const parent of [content,work])for(const e of parent.children){let on=Number(e.dataset.wstep)===step;e.hidden=!on;e.classList.toggle('wizard-active',on);}
 work.classList.toggle('wizard-inactive',step<2);
 if(step>=2)work.after(bar);else content.after(bar);
 bar.style.cssText='position:relative;top:auto;z-index:1;background:#eef4fb;border:1px solid #b5cbe1;border-radius:9px;padding:12px;margin:8px 0 16px;width:100%;box-sizing:border-box';
