@@ -300,6 +300,7 @@ function startAcademyCloud(){
  const adminPanel=document.createElement('section');adminPanel.id='academyAdminPanel';adminPanel.style.cssText='display:none;background:#fff;border:2px solid #17355e;border-radius:10px;padding:18px;margin:15px auto;max-width:1260px';
  adminPanel.innerHTML='<h2>Academy Administrator — Trainee Training Modes</h2><p>Only the Administrator can assign a trainee to SAP Hands-On or Simulation. Default: SAP Hands-On.</p><label>Trainee account email <input id="academyTraineeEmail" type="email" placeholder="trainee@example.com"></label> <label>Assigned training <select id="academyModeChoice"><option value="hands_on">SAP Hands-On</option><option value="simulation">SAP Simulation</option></select></label> <button id="academyAssignMode" type="button">Save assignment</button><button id="academyRefreshModes" type="button">Refresh assignments</button><p id="academyAdminMessage" role="status"></p><div id="academyAssignments"></div>';
  if(academyHeader)academyHeader.after(modeBanner,modeInstructions,adminPanel);
+ let user=null;
  let trainingMode='hands_on';
  function applyTrainingMode(mode){
    trainingMode=mode==='simulation'?'simulation':'hands_on';
@@ -364,7 +365,6 @@ function startAcademyCloud(){
  showAcademy(false);document.body.classList.add('academy-auth-ready');
  const el=id=>document.getElementById(id),notice=s=>el('cloudState').textContent=s;
  if(!client){notice('Authentication client unavailable — library failed to initialize. Please report this error.');return}
- let user=null;
  async function updateReviewActions(){
   const lead=el('leadPanel'),reopen=el('cloudReopen');lead.style.display='none';reopen.style.display='none';
   if(!user)return;
