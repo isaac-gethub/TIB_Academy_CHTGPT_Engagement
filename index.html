@@ -256,9 +256,23 @@ function startAcademyCloud(){
    const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo});
    notice(error?'Password recovery unavailable: '+error.message:'If this account is registered, a password-reset email will arrive shortly. Use the newest email link.');
  };
+ const passwordHelp=document.createElement('p');
+ passwordHelp.id='academyPasswordHelp';
+ passwordHelp.style.cssText='font-size:13px;margin:8px 0;color:#52647b';
+ el('passwordPanel').append(passwordHelp);
+ function validateRecoveryPassword(){
+   const password=el('cloudNewPassword').value,confirm=el('cloudConfirmPassword').value;
+   const count=Array.from(password).length;
+   passwordHelp.textContent=count+' characters entered (minimum 12). '+(count<12?'Add '+(12-count)+' more.':confirm&&password!==confirm?'Passwords do not match.':'Password length accepted.');
+   passwordHelp.style.color=count<12||confirm&&password!==confirm?'#9b3b30':'#246a45';
+   if(count>=12&&(!confirm||password===confirm)&&el('cloudState').textContent==='Password must contain at least 12 characters')notice('Password length accepted. Click Set password to continue.');
+ }
+ el('cloudNewPassword').addEventListener('input',validateRecoveryPassword);
+ el('cloudConfirmPassword').addEventListener('input',validateRecoveryPassword);
+ validateRecoveryPassword();
  el('cloudSetPassword').onclick=async()=>{
    const password=el('cloudNewPassword').value,confirm=el('cloudConfirmPassword').value;
-   if(password.length<12)return notice('Password must contain at least 12 characters');
+   if(Array.from(password).length<12){validateRecoveryPassword();return notice('Password must contain at least 12 characters ('+Array.from(password).length+' entered).')}
    if(password!==confirm)return notice('Passwords do not match');
    const {data}=await client.auth.getSession();
    if(!data?.session)return notice('The reset link has not been verified or has expired. Request a new password reset email.');
