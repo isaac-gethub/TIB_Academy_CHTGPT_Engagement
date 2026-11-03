@@ -635,10 +635,13 @@ function academyExecutionActivities(id){
  return activities;
 }
 const academyActivitySelection={};
-function academyNavigationPanel(id){
+function academyNavigationPanel(id,phase='execute'){
  const panel=document.createElement('section');panel.id='academyActivityGuide';panel.style.cssText='border:2px solid #7da5c9;background:#fff;border-radius:10px;padding:14px;margin:12px 0';
- const activities=academyExecutionActivities(id),idx=Math.min(academyActivitySelection[id]||0,activities.length-1),a=activities[idx];
- const h=makeNode('h4','Activity-by-activity SAP Execution Guide — '+id);panel.append(h);
+ const all=academyExecutionActivities(id);
+ const activities=all.filter(a=>phase==='conclude'?/^B[123]\b/.test(a.title):!/^B[123]\b/.test(a.title));
+ if(!activities.length)activities.push({title:phase==='conclude'?'B1–B3 — Analyse, decide and conclude':'A1–A6 — Execute and capture evidence',source:'Module workpaper',parts:[{type:'paragraph',text:phase==='conclude'?'Use the observed evidence to analyse exceptions, decide the outcome and write a supported conclusion.':'Follow the source tutorial and record actual SAP evidence or explicitly labelled simulated evidence.'}]});
+ const key=id+'_'+phase,idx=Math.min(academyActivitySelection[key]||0,activities.length-1),a=activities[idx];
+ const h=makeNode('h4','(phase==='conclude'?'Analysis and conclusion activities — ':'Activity-by-activity SAP Execution Guide — ')+id);panel.append(h);
  panel.append(makeNode('p','Choose one activity at a time. Follow the exact navigation, selection screen, output, evidence and conclusion before proceeding. '+(window.academyTrainingMode==='simulation'?'SIMULATION MODE — fictional outputs only.':'SAP ACCESS MODE — use authorised read-only access.')));
  const chooser=document.createElement('select');chooser.setAttribute('aria-label','Choose SAP execution activity');chooser.style.cssText='width:100%;padding:10px;border:1px solid #9db4cf;border-radius:6px;margin:8px 0';
  activities.forEach((item,i)=>{const o=document.createElement('option');o.value=i;o.textContent=(i+1)+' / '+activities.length+' — '+item.title;chooser.append(o)});chooser.value=String(idx);
@@ -647,7 +650,7 @@ function academyNavigationPanel(id){
  const previous=document.createElement('button'),next=document.createElement('button'),count=makeNode('span','');
  previous.type=next.type='button';previous.textContent='Previous activity';next.textContent='Next activity';
  function render(){
-  const n=Math.min(academyActivitySelection[id]||0,activities.length-1),activity=activities[n];chooser.value=String(n);detail.replaceChildren();
+  const n=Math.min(academyActivitySelection[key]||0,activities.length-1),activity=activities[n];chooser.value=String(n);detail.replaceChildren();
   detail.append(makeNode('h4',activity.title),makeNode('small',activity.source||'SAP Evidence Tutorial'));
   if(activity.tcode)detail.append(makeNode('p','SAP T-code / application: '+activity.tcode));
   for(const part of activity.parts||[]){
@@ -676,7 +679,7 @@ function updateGuide(){
   const a=steps[step];spec={title:a[0],learn:a[1],demo:a[2],task:a[3],check:a[4]};
  }
  const transaction=(document.querySelector('#sapSimulationLab')?.textContent||'').match(/(?:NWBC|SUIM|SE16N|SM37|STMS|SM51|SM59|DBACOCKPIT|FAGLL03|RZ11|OB52|OB28)/)?.[0]||'the transaction listed in this module';
- instruction.replaceChildren(makeNode('h3','1. Learn — '+spec.title),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),(step===1?academyNavigationPanel(id):makeNode('p','SAP activity instructions are available in Step 2 — Execute the SAP transaction.')),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
+ instruction.replaceChildren(makeNode('p','TRAINING ENVIRONMENT: '+(window.academyTrainingMode==='simulation'?'SAP Simulation — no SAP login; fictional evidence only':'SAP Hands-On — use your authorised external SAP training system')+'. The training version is assigned to your account by the Academy administrator.'),makeNode('h3','1. Learn — '+spec.title),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),((step===1||step===4)?academyNavigationPanel(id,step===4?'conclude':'execute'):makeNode('p',step<1?'The detailed SAP activity guide opens in Stage 2.':step===5?'Your workpaper is ready for final review and submission.':'Use the workpaper fields below to document the results of Stage 2.')),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
  exercise.replaceChildren(makeNode('h4','3. Your exercise'),makeNode('p',spec.task),makeNode('h4','4. Completion check'),makeNode('p',spec.check));
 }
 function tag(){
@@ -700,7 +703,7 @@ function paint(){tag();updateGuide();for(const parent of [content,work])for(cons
 work.classList.toggle('wizard-inactive',step<2);
 if(step>=2)work.after(bar);else content.after(bar);
 bar.style.cssText='position:relative;top:auto;z-index:1;background:#eef4fb;border:1px solid #b5cbe1;border-radius:9px;padding:12px;margin:8px 0 16px;width:100%;box-sizing:border-box';
-document.getElementById('wizardLabel').textContent=(window.academyTrainingMode==='simulation'&&step===1?'Execute simulation':names[step]);document.getElementById('wizardCount').textContent='Step '+(step+1)+' of 6';document.getElementById('wizardPrev').disabled=step===0;document.getElementById('wizardNext').disabled=step===5;}
+document.getElementById('wizardLabel').textContent=(window.academyTrainingMode==='simulation'&&step===1?'Execute simulation':names[step]);document.getElementById('wizardCount').textContent='Stage '+(step+1)+' of 6 — '+Math.round((step+1)/6*100)+'% of guided stages';document.getElementById('wizardPrev').disabled=step===0;document.getElementById('wizardNext').disabled=step===5;document.getElementById('wizardNext').textContent=step===4?'Continue to Stage 6 — Save and Submit →':step===5?'Lesson stages complete':'Next stage →';}
 function go(n){if(n<0||n>5)return;if(work.dataset.loaded==='yes')capture();step=n;paint();heading.scrollIntoView({block:'start'});}
 document.getElementById('wizardPrev').onclick=()=>go(step-1);document.getElementById('wizardNext').onclick=()=>go(step+1);
 const old=window.show;if(typeof old==='function')window.show=function(i){old(i);if(active!==heading.textContent){active=heading.textContent;step=0;}paint()};
