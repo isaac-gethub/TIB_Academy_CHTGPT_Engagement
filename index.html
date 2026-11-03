@@ -377,7 +377,7 @@ function startAcademyCloud(){
    resetButton.style.cursor=ready?'pointer':'not-allowed';
  }
  async function boundedAuth(operation){
-   return Promise.race([operation,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Authentication verification timed out. Request a fresh password reset link.')),12000))]);
+   return Promise.race([operation,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Supabase authentication did not respond within 12 seconds')),12000))]);
  }
  async function verifyRecovery(){
    if(!recoveryMode)return;
@@ -398,12 +398,19 @@ function startAcademyCloud(){
  }
  async function refresh(){
    if(recoveryMode){showRecoveryForm();return}
-   const {data,error}=await client.auth.getUser();
-   user=data?.user||null;
-   showAcademy(!!user);
-   if(user)await loadTrainingMode();
-   await updateReviewActions();
-   notice(user?'Signed in: '+user.email:(error&&error.message!=='Auth session missing!'?'Unable to check session: '+error.message:'Enter your TIB email and password to sign in'));
+   try{
+     const {data,error}=await boundedAuth(client.auth.getUser());
+     user=data?.user||null;
+     showAcademy(!!user);
+     notice(user?'Signed in: '+user.email:(error&&error.message!=='Auth session missing!'?'Unable to check session: '+error.message:'Enter your TIB email and password to sign in'));
+     if(user){
+       try{await Promise.race([loadTrainingMode(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Training settings request timed out')),12000))])}catch(err){notice('Signed in, but training settings could not load: '+err.message)}
+       try{await Promise.race([updateReviewActions(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Review actions request timed out')),12000))])}catch(err){notice('Signed in; review controls are temporarily unavailable: '+err.message)}
+     }
+   }catch(err){
+     user=null;showAcademy(false);
+     notice('Unable to connect to Academy authentication: '+err.message+'. Check your connection, disable blocking extensions for this site, then reload.');
+   }
  }
  client.auth.onAuthStateChange((event)=>{
    if(event==='PASSWORD_RECOVERY'){recoveryVerified=true;showRecoveryForm('Reset link verified. Enter your new password and click Set password.');recoveryButtonState();return}
@@ -411,7 +418,7 @@ function startAcademyCloud(){
  });
  if(recoveryRequested){showRecoveryForm('Checking your password reset link…');verifyRecovery()}
  else refresh();
- el('cloudLogin').onclick=async()=>{const email=el('cloudEmail').value.trim(),password=el('cloudPassword').value;if(!email||!password)return notice('Enter email and password');const {error}=await client.auth.signInWithPassword({email,password});el('cloudPassword').value='';if(error)return notice('Sign in failed: '+error.message);await refresh()};
+ el('cloudLogin').onclick=async()=>{const email=el('cloudEmail').value.trim(),password=el('cloudPassword').value;if(!email||!password)return notice('Enter email and password');let result;try{notice('Signing in…');result=await boundedAuth(client.auth.signInWithPassword({email,password}))}catch(err){return notice('Sign in could not connect: '+err.message+'. Please retry.')}finally{el('cloudPassword').value=''}if(result.error)return notice('Sign in failed: '+result.error.message);await refresh()};
  el('cloudReset').onclick=async()=>{
    const email=el('cloudEmail').value.trim();
    if(!email)return notice('Enter your account email first');
