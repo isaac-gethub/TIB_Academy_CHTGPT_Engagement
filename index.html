@@ -641,7 +641,7 @@ function academyNavigationPanel(id,phase='execute'){
  const activities=all.filter(a=>phase==='conclude'?/^B[123]\b/.test(a.title):!/^B[123]\b/.test(a.title));
  if(!activities.length)activities.push({title:phase==='conclude'?'B1–B3 — Analyse, decide and conclude':'A1–A6 — Execute and capture evidence',source:'Module workpaper',parts:[{type:'paragraph',text:phase==='conclude'?'Use the observed evidence to analyse exceptions, decide the outcome and write a supported conclusion.':'Follow the source tutorial and record actual SAP evidence or explicitly labelled simulated evidence.'}]});
  const key=id+'_'+phase,idx=Math.min(academyActivitySelection[key]||0,activities.length-1),a=activities[idx];
- const h=makeNode('h4','(phase==='conclude'?'Analysis and conclusion activities — ':'Activity-by-activity SAP Execution Guide — ')+id);panel.append(h);
+ const h=makeNode('h4',(phase==='conclude'?'Analysis and conclusion activities — ':'Activity-by-activity SAP Execution Guide — ')+id);panel.append(h);
  panel.append(makeNode('p','Choose one activity at a time. Follow the exact navigation, selection screen, output, evidence and conclusion before proceeding. '+(window.academyTrainingMode==='simulation'?'SIMULATION MODE — fictional outputs only.':'SAP ACCESS MODE — use authorised read-only access.')));
  const chooser=document.createElement('select');chooser.setAttribute('aria-label','Choose SAP execution activity');chooser.style.cssText='width:100%;padding:10px;border:1px solid #9db4cf;border-radius:6px;margin:8px 0';
  activities.forEach((item,i)=>{const o=document.createElement('option');o.value=i;o.textContent=(i+1)+' / '+activities.length+' — '+item.title;chooser.append(o)});chooser.value=String(idx);
