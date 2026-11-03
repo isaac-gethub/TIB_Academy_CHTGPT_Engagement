@@ -359,4 +359,23 @@ function startAcademyCloud(){
 
 }
 </script>
-</html>
+<script>
+(function(){
+const names=['Understand','Execute simulation','Capture evidence','Analyse','Conclude','Save and submit'],content=document.getElementById('content'),work=document.getElementById('workspace'),heading=document.getElementById('heading');if(!content||!work)return;
+let step=0,full=false,active='';
+const bar=document.createElement('section');bar.id='academyWizard';bar.style.cssText='position:sticky;top:0;z-index:30;background:white;border:2px solid #245987;border-radius:10px;padding:12px;margin:12px 0';
+bar.innerHTML='<strong>Guided execution — <span id="wizardLabel"></span></strong><p id="wizardCount"></p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="wizardPrev">Previous</button><button type="button" id="wizardNext">Next</button><button type="button" id="wizardFull">Full workpaper view</button></div>';
+heading.after(bar);
+function tag(){for(const e of content.children)e.dataset.wstep=(e.id==='moduleModeGuide'||e.id==='sapSimulationLab')?1:0;
+for(const e of work.children)e.dataset.wstep=5;
+for(const [id,n] of Object.entries({stage:2,objective:2,evidence:2,result:3,exceptions:3,conclusion:4,openitems:4,decision:4,review:4})){let e=document.getElementById(id);if(e)(e.closest('label')||e).dataset.wstep=n;}
+for(const [id,n] of Object.entries({evidenceRows:2,addEvidence:2,checks:4,validate:4,quality:4})){let e=document.getElementById(id);if(e)(e.closest('.actions')||e).dataset.wstep=n;}
+for(const e of work.querySelectorAll(':scope > h3'))e.dataset.wstep=/Evidence register/.test(e.textContent)?2:/Evidence capture checklist/.test(e.textContent)?4:2;
+}
+function paint(){tag();for(const parent of [content,work])for(const e of parent.children){let on=full||Number(e.dataset.wstep)===step;e.hidden=!on;e.style.display=on?'':'none';}
+work.style.display=full||step>=2?'':'none';document.getElementById('wizardLabel').textContent=names[step];document.getElementById('wizardCount').textContent='Step '+(step+1)+' of 6';document.getElementById('wizardPrev').disabled=step===0;document.getElementById('wizardNext').disabled=step===5;document.getElementById('wizardFull').textContent=full?'Guided view':'Full workpaper view';}
+function go(n){if(n<0||n>5)return;if(work.dataset.loaded==='yes')capture();step=n;full=false;paint();bar.scrollIntoView({block:'start'});}
+document.getElementById('wizardPrev').onclick=()=>go(step-1);document.getElementById('wizardNext').onclick=()=>go(step+1);document.getElementById('wizardFull').onclick=()=>{if(work.dataset.loaded==='yes')capture();full=!full;paint()};
+const old=window.show;if(typeof old==='function')window.show=function(i){old(i);if(active!==heading.textContent){active=heading.textContent;step=0;full=false;}paint()};paint();
+})();
+</script></html>
