@@ -433,8 +433,11 @@ for(const [id,n] of Object.entries({evidenceRows:2,addEvidence:2,checks:4,valida
 for(const e of work.querySelectorAll(':scope > h3'))e.dataset.wstep=/Evidence register/.test(e.textContent)?2:/Evidence capture checklist/.test(e.textContent)?4:2;
 }
 function paint(){tag();for(const parent of [content,work])for(const e of parent.children){let on=Number(e.dataset.wstep)===step;e.hidden=!on;e.classList.toggle('wizard-active',on);}
-work.classList.toggle('wizard-inactive',step<2);document.getElementById('wizardLabel').textContent=names[step];document.getElementById('wizardCount').textContent='Step '+(step+1)+' of 6';document.getElementById('wizardPrev').disabled=step===0;document.getElementById('wizardNext').disabled=step===5;}
-function go(n){if(n<0||n>5)return;if(work.dataset.loaded==='yes')capture();step=n;paint();bar.scrollIntoView({block:'start'});}
+work.classList.toggle('wizard-inactive',step<2);
+if(step>=2)work.after(bar);else content.after(bar);
+bar.style.cssText='position:relative;top:auto;z-index:1;background:#eef4fb;border:1px solid #b5cbe1;border-radius:9px;padding:12px;margin:8px 0 16px;width:100%;box-sizing:border-box';
+document.getElementById('wizardLabel').textContent=names[step];document.getElementById('wizardCount').textContent='Step '+(step+1)+' of 6';document.getElementById('wizardPrev').disabled=step===0;document.getElementById('wizardNext').disabled=step===5;}
+function go(n){if(n<0||n>5)return;if(work.dataset.loaded==='yes')capture();step=n;paint();heading.scrollIntoView({block:'start'});}
 document.getElementById('wizardPrev').onclick=()=>go(step-1);document.getElementById('wizardNext').onclick=()=>go(step+1);
 const old=window.show;if(typeof old==='function')window.show=function(i){old(i);if(active!==heading.textContent){active=heading.textContent;step=0;}paint()};
 const observer=new MutationObserver(()=>{if(!document.body.contains(bar))return;const id=heading.textContent;if(id!==active){active=id;step=0;}paint()});
