@@ -182,7 +182,7 @@ function startAcademyCloud(){
  }
  async function loadTrainingMode(){
    if(!user)return;
-   if(user.email?.toLowerCase()==='admin@tib-systems.com'){
+   if(user.email?.toLowerCase()==='isaac.babsng@gmail.com'){
      adminPanel.style.display='block';await loadAssignments();
    }else adminPanel.style.display='none';
    const {data,error}=await client.from('tib_academy_training_modes').select('mode').eq('trainee_id',user.id).maybeSingle();
