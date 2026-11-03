@@ -142,10 +142,21 @@ function renderSapSimulation(chapter){
  }
  lab.append(bar,notice,controls,viewport,status);document.getElementById('content').prepend(lab);paint();
 }
-const sapExcelGuidance='The instructor will provide an Excel SAP Access Parameters workbook for each step. Refer to the Excel file for the SAP transaction code (T-code) or Fiori menu path, system/client, selection criteria and parameter values. If the file or required values are missing, ask the instructor for the parameters file before proceeding. Do not invent values or results.';
+const sapExcelGuidance='The instructor will provide an Excel SAP Access Parameters workbook for each step. Refer to your Excel file for the SAP transaction code (T-code) or Fiori menu path, system/client, selection criteria and parameter values for each step. If the file or required values are missing, ask the instructor for the parameters file before proceeding. Do not invent values or results.';
 function handsOnLessonText(value){
- if(window.academyTrainingMode==='simulation')return String(value);
- return String(value).replace(/TIB-SIM\s*\/\s*100|TIB-SIM client 100|TIB-SIM\/100/gi,'instructor-provided SAP system/client').replace(/fictional client 100, reporting period 2026-10/gi,'system/client and reporting period from the instructor Excel workbook').replace(/fictional training value|fictional training records|fictional results|fictional case|worked fictional example/gi,'instructor-provided SAP training-system values').replace(/simulated selection values|simulated output|simulated evidence|simulated transaction|simulated sample/gi,'actual authorized SAP training-system values and evidence').replace(/execute the simulator/gi,'execute the authorized SAP transaction').replace(/Training simulation only\. This is not a live SAP connection or evidence of real production access\./gi,sapExcelGuidance).replace(/This is a fictional case and evidence challenge, not live SAP execution\./gi,'Use actual SAP training-system evidence and the instructor Excel parameters file.').replace(/All values are fictional[^.]*\./gi,sapExcelGuidance).replace(/Select [^.;]{1,100} = [^.;]{1,80}; [^.;]{1,100} = [^.;]{1,80}\./gi,'Use selection fields and values from the instructor Excel SAP Access Parameters workbook.');
+ const original=String(value);
+ if(window.academyTrainingMode==='simulation')return original;
+ if(/^(?:SAMPLE[-_]|SIMULATED\s*\||TIB-SIM)/i.test(original.trim()))return 'Use the actual SAP value or evidence reference from the instructor Excel SAP Access Parameters workbook.';
+ if(/fictional training value|sample evidence field|fictional sample|fictional training records|training simulation only|assessment limitation|fictional case and evidence challenge/i.test(original))return sapExcelGuidance;
+ return original
+ .replace(/TIB-SIM\s*\/\s*100|TIB-SIM client 100|TIB-SIM\/100/gi,'instructor-provided SAP system/client')
+ .replace(/fictional client 100, reporting period 2026-10/gi,'system/client and reporting period from the instructor Excel workbook')
+ .replace(/Select [^.;]{1,100} = [^.;]{1,80}; [^.;]{1,100} = [^.;]{1,80}\./gi,'Use selection fields and values in the instructor Excel SAP Access Parameters workbook.')
+ .replace(/2026-10/g,'the reporting period in the instructor Excel workbook')
+ .replace(/execute the simulator/gi,'execute the authorized SAP transaction')
+ .replace(/fictional|simulated|simulation|sample/gi,'SAP training-system')
+ .replace(/no SAP login is required|do not log into SAP|not live SAP execution/gi,'use authorized SAP training-system access')
+ .replace(/not a live SAP connection or evidence of real production access/gi,'SAP execution requires your separately authorized training-system login');
 }
 function renderModuleModeGuide(chapter){
  const old=document.getElementById('moduleModeGuide');if(old)old.remove();
@@ -326,7 +337,7 @@ function startAcademyCloud(){
      modeBanner.append(manage);
    }
    modeInstructions.innerHTML=hands
-   ?'<h2>SAP Hands-On Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>Use the actual SAP training system available to you. Follow each module\'s SAP area, procedure and evidence requirements. Perform only transactions and data exports authorized by your instructor. Record actual transaction codes, system/client, selection variants, dates, record counts, screenshots and export filenames in the workpaper. Analyse real training-system evidence, document exceptions, then submit for Lead review.</p><p><strong>Important:</strong> This Academy does not connect directly to SAP. Open SAP GUI/Fiori separately. Never upload confidential production or client data without explicit authorization.</p>'
+   ?'<h2>SAP Hands-On Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>Use the actual SAP training system available to you. For each step, refer to the instructor-provided Excel SAP Access Parameters workbook for the SAP T-code or Fiori menu path and required parameter values. If missing, ask the instructor for the file before proceeding. Follow each module\'s SAP area, procedure and evidence requirements. Perform only transactions and data exports authorized by your instructor. Record actual transaction codes, system/client, selection variants, dates, record counts, screenshots and export filenames in the workpaper. Analyse real training-system evidence, document exceptions, then submit for Lead review.</p><p><strong>Important:</strong> This Academy does not connect directly to SAP. Open SAP GUI/Fiori separately. Never upload confidential production or client data without explicit authorization.</p>'
    :'<h2>SAP Simulation Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>No SAP login is required. Treat each module as a fictional SAP case. Study the SAP procedures as read-only demonstrations; do not attempt live transactions. Use fictional company, system/client, selection criteria, sample evidence identifiers, record counts and filenames. Analyse the scenario, record assumptions and conclusions in the same workpaper, and submit to your Lead for review.</p><p><strong>Important:</strong> Clearly mark every simulated evidence reference SAMPLE or SIMULATED. Do not present it as an actual SAP extraction.</p>';
  }
  async function loadTrainingMode(){
@@ -554,7 +565,7 @@ function updateGuide(){
   ];
   const a=steps[step];spec={title:a[0],learn:a[1],demo:a[2],task:a[3],check:a[4]};
  }
- const transaction=(document.querySelector('#sapSimulationLab')?.textContent||'').match(/(?:NWBC|SUIM|SE16N|SM37|STMS|SM51|SM59|DBACOCKPIT|FAGLL03|RZ11|OB52|OB28)/)?.[0]||'the module simulator';
+ const transaction=(document.querySelector('#sapSimulationLab')?.textContent||'').match(/(?:NWBC|SUIM|SE16N|SM37|STMS|SM51|SM59|DBACOCKPIT|FAGLL03|RZ11|OB52|OB28)/)?.[0]||'the SAP transaction identified in the instructor Excel file';
  instruction.replaceChildren(makeNode('h3','1. Learn — '+spec.title),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
  exercise.replaceChildren(makeNode('h4','3. Your exercise'),makeNode('p',spec.task),makeNode('h4','4. Completion check'),makeNode('p',spec.check));
 }
