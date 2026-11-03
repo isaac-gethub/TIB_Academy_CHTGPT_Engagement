@@ -1,5 +1,10 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TIB Controls Execution Academy — Integrated Academy — Cloud Review</title><style>body:not(.academy-auth-ready) > header,body:not(.academy-auth-ready) > main{visibility:hidden}body{font:16px system-ui;margin:0;background:#f4f7fb;color:#182b45}header{background:#17355e;color:white;padding:22px}main{display:grid;grid-template-columns:280px 1fr;gap:20px;max-width:1300px;margin:25px auto;padding:0 20px}nav,article{background:white;padding:20px;border-radius:12px}button{display:block;width:100%;margin:5px 0;text-align:left;padding:10px;border:1px solid #dae1eb;background:white;border-radius:6px;cursor:pointer}button.active{background:#dce9fa}p{line-height:1.55;white-space:pre-wrap}small{color:#566579} @media(max-width:700px){main{display:block}nav{max-height:220px;overflow:auto;margin-bottom:16px}}#workspace{border-top:2px solid #dce9fa;margin-top:25px;padding-top:15px}label{display:block;font-weight:600;margin:12px 0}input:not([type=checkbox]),textarea,select{display:block;width:100%;box-sizing:border-box;padding:9px;border:1px solid #b7c5d6;border-radius:6px;margin-top:5px;font:inherit}textarea{min-height:76px}fieldset{border:1px solid #d7e0ed;border-radius:8px;margin:12px 0;padding:12px}fieldset label{font-size:14px}fieldset input{display:block;width:100%;padding:8px;box-sizing:border-box;margin-top:4px;border:1px solid #b7c5d6;border-radius:5px}#quality{font-weight:600;color:#754800}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{width:auto;background:#17355e;color:white}.notice{background:#fff4d8;padding:10px;border-radius:7px}#checks label{font-weight:400}#checks input{margin-right:10px}#saved{color:#17633a} </style><header><h1>TIB Controls Execution Academy</h1><div>Thornfield • TF-01–TF-20 • integrated evidence workbench — production verification</div></header><main><nav id="nav"></nav><article><h2 id="heading"></h2><small>Complete source-derived lessons and tables. Training drafts save locally until you sign in and choose Save to cloud. SAP procedures are training references; SAP Hands-On requires separate authorized SAP access. The Academy does not connect directly to SAP.</small><style id="academyWizardOnlyStyles">
 #academyWizard{display:block!important}
+#content{min-height:40px}
+#content > #sapSimulationLab,#content > #moduleModeGuide{display:none}
+#content > #academyLessonDetails{display:block}
+#workspace{display:none}
+#workspace:not(.wizard-inactive){display:block}
 #content > [data-wstep],#workspace > [data-wstep]{display:none!important}
 #content > [data-wstep].wizard-active,#workspace > [data-wstep].wizard-active{display:block!important}
 #workspace.wizard-inactive{display:none!important}
@@ -54,7 +59,7 @@ function renderSapSimulation(chapter){
    viewport.append(button('Copy sample evidence reference',()=>{navigator.clipboard?.writeText(reference);status.textContent='Evidence reference prepared for copying.'}));
   }
  }
- lab.append(bar,notice,controls,viewport,status);document.getElementById('content').before(lab);paint();
+ lab.append(bar,notice,controls,viewport,status);document.getElementById('content').prepend(lab);paint();
 }
 function renderModuleModeGuide(chapter){
  const old=document.getElementById('moduleModeGuide');if(old)old.remove();
@@ -80,7 +85,7 @@ function renderModuleModeGuide(chapter){
  const note=document.createElement('p');note.style.cssText='font-size:13px;color:#415674;margin:8px 0 0';
  note.textContent=isSim?'Training mode: Simulation. The SAP procedure below is reference material, not an instruction to access SAP. All evidence must be fictional or approved sample evidence.':'Training mode: SAP Hands-On. The procedure below guides work in an external authorized SAP system; the Academy does not execute SAP transactions.';
  guide.append(title,steps,note);
- document.getElementById('content').before(guide);
+ document.getElementById('content').prepend(guide);
 }
 function show(i){if(document.querySelector('#workspace')?.dataset.loaded==='yes')capture();current=i;heading.textContent=chapters[i].id+' '+chapters[i].title;document.getElementById('workpaperTitle').textContent=chapters[i].id;body.replaceChildren();renderModuleModeGuide(chapters[i]);renderSapSimulation(chapters[i]);for(const block of fullLessons[chapters[i].id]||[]){if(block.type==='paragraph'){const p=document.createElement('p');p.textContent=block.text;body.append(p)}else{const holder=document.createElement('div');holder.style.overflowX='auto';const table=document.createElement('table');table.style.cssText='border-collapse:collapse;width:100%;font-size:14px;margin:12px 0';block.rows.forEach((cells,ri)=>{const tr=document.createElement('tr');cells.forEach(value=>{const td=document.createElement(ri===0?'th':'td');td.textContent=value;td.style.cssText='border:1px solid #cbd5e1;padding:8px;vertical-align:top;text-align:left;'+(ri===0?'background:#e6edf7':'');tr.append(td)});table.append(tr)});holder.append(table);body.append(holder)}}const record=records[chapters[i].id]||{};for(const f of fields)document.getElementById(f).value=record[f]|| (f==='stage'?'not_started':'');const checks=document.getElementById('checks');checks.replaceChildren();checklist.forEach((label,i)=>{const el=document.createElement('label'),cb=document.createElement('input');cb.type='checkbox';cb.id='check'+i;cb.checked=!!(record.checks||[])[i];el.append(cb,document.createTextNode(label));checks.append(el)});renderEvidence(record.evidenceRows||[]);document.getElementById('quality').textContent='';document.getElementById('saved').textContent=record.updatedAt?'Last saved: '+new Date(record.updatedAt).toLocaleString():'Not saved';renderNav();document.querySelector('#workspace').dataset.loaded='yes'}
 function renderEvidence(rows){const parent=document.getElementById('evidenceRows');parent.replaceChildren();rows.forEach(row=>addEvidence(row))}
@@ -369,7 +374,18 @@ function startAcademyCloud(){
 const names=['Understand','Execute simulation','Capture evidence','Analyse','Conclude','Save and submit'],content=document.getElementById('content'),work=document.getElementById('workspace'),heading=document.getElementById('heading');if(!content||!work)return;
 let step=0,active='';
 const bar=document.getElementById('academyWizard');if(!bar)return;
-function tag(){for(const e of content.children)e.dataset.wstep=(e.id==='moduleModeGuide'||e.id==='sapSimulationLab')?1:0;
+function tag(){
+let lesson=document.getElementById('academyLessonDetails');
+if(!lesson){
+ const parts=Array.from(content.children).filter(e=>e.id!=='moduleModeGuide'&&e.id!=='sapSimulationLab');
+ if(parts.length){
+  lesson=document.createElement('details');lesson.id='academyLessonDetails';
+  lesson.style.cssText='border:1px solid #d7e0ed;padding:12px;border-radius:8px;margin:10px 0';
+  const summary=document.createElement('summary');summary.textContent='Open complete source lesson and reference tables (optional)';lesson.append(summary);
+  parts.forEach(e=>lesson.append(e));content.append(lesson);
+ }
+}
+for(const e of content.children)e.dataset.wstep=(e.id==='moduleModeGuide'||e.id==='sapSimulationLab')?1:0;
 for(const e of work.children)e.dataset.wstep=5;
 for(const [id,n] of Object.entries({stage:2,objective:2,evidence:2,result:3,exceptions:3,conclusion:4,openitems:4,decision:4,review:4})){let e=document.getElementById(id);if(e)(e.closest('label')||e).dataset.wstep=n;}
 for(const [id,n] of Object.entries({evidenceRows:2,addEvidence:2,checks:4,validate:4,quality:4})){let e=document.getElementById(id);if(e)(e.closest('.actions')||e).dataset.wstep=n;}
