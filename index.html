@@ -587,20 +587,73 @@ function academyStepNavigation(id){
  if(profile?.[0])add('SAP transaction: '+profile[0]+' — '+profile[1]);
  return entries;
 }
-function academyNavigationPanel(id){
- const box=document.createElement('section');
- box.style.cssText='border:2px solid #7da5c9;background:#fff;border-radius:9px;padding:12px;margin:12px 0';
- box.append(makeNode('h4','SAP T-codes and navigation — '+id));
- const entries=academyStepNavigation(id);
- if(entries.length){
-  const list=document.createElement('ol');list.style.paddingLeft='22px';
-  entries.forEach(entry=>{const li=document.createElement('li');li.textContent=entry;li.style.margin='8px 0';list.append(li)});
-  box.append(list);
- }else{
-  box.append(makeNode('p','The module does not yet specify a verified SAP menu path. Ask the instructor to confirm the navigation before class; the Excel workbook contains selection values only.'));
+
+function academyExecutionActivities(id){
+ const blocks=fullLessons[id]||[],addon=window.ACADEMY_ADDONS?.[id],activities=[];
+ if(addon){
+  const skills=addon.skills||[];
+  skills.forEach((skill,i)=>{
+   const code=(skill.match(/\b(?:\/UI2\/[A-Z0-9_]+|[A-Z]{2,8}[0-9]{0,3})\b/g)||[]).filter(v=>/^(?:PFCG|SU24|SU53|STAUTHTRACE|SUIM|NWBC|SE16N|SM37|STMS|SCC4|SM51|SU01|SM20|SM19|RZ10|RZ11|SNOTE|SE09|SE10|SE06|SCU3|SCU0|SCC1|SM30|SE38|SE80|SE11|SE16|SE16N|FBL1N|FBL3N|FBL5N|FB03|FAGLL03|OB52|GRC|ARA|ARM|BRM|EAM|HANA|DBACOCKPIT|ST01|ST05|ST12|SM21|AL08|SM04|SM59|WE02|WE05|BD87|SLG1|SRT_MONI|SICF|STRUST|SMICM|SCC4|S_ALR_87012326|F110|FK03|BP|MIR4|ME23N|MB51|MB52|MIGO|MIRO|FS00|FAGL_FCV|RSA1|RSA3|RSRT|RSUSR200|RSUSR002|RSPARAM|SUIM|SU53|STAUTHTRACE|SU24|PFCG|NWBC)$/.test(v));
+   const tcode=code[0]|| (i===0?addon.tcode:'');
+   activities.push({title:'A2.'+(i+1)+' '+skill,tcode,source:'Job-comparison scope extension — Academy authored',parts:[
+    {type:'paragraph',text:'Objective: '+skill+'. Business risk: '+addon.risk+'.'},
+    {type:'paragraph',text:'A1 — Sign in to the authorised SAP training system. Confirm SID, client, user and role. For simulation, use the fictional SAP practice screen; do not claim real SAP evidence.'},
+    {type:'paragraph',text:'A2 — Navigate to '+(tcode||'the SAP application or configuration area identified by the instructor')+'. '+(tcode?'Enter '+tcode+' in the SAP command field if available; otherwise locate the equivalent Fiori or GRC application.':'The exact menu path is system/version dependent and requires instructor confirmation.')},
+    {type:'table',rows:[['Selection field','Enter / inspect','Why'],[addon.a||'Scope',String(addon.sample?.[1]||'Instructor-provided scope'),'Constrain the test to the approved business scope'],[addon.b||'Object / period',String(addon.sample?.[2]||'Instructor-provided object'),'Identify the population or exception'],['System/client and reporting period','Instructor-approved values; simulation uses fictional data','Maintain reproducible evidence']]},
+    {type:'paragraph',text:'A3 — Confirm that all selections match the assigned case. Do not guess missing parameters or change SAP configuration.'},
+    {type:'paragraph',text:'A4 — Execute display/read-only analysis where authorised. Capture result count, object identifiers, statuses and exceptions. Compare the observed result with the control expectation; if the transaction is not authorised, record the limitation.'},
+    {type:'paragraph',text:'A5 — Capture selection-screen and result screenshots, with SID/client, date, criteria and record count visible where available.'},
+    {type:'paragraph',text:'A6 — Record evidence as EV-'+id.replace('-','')+'-'+String(i+1).padStart(2,'0')+'_[date]; log the source, selections, actual count and reviewer. Simulated evidence must be labelled SIMULATED.'},
+    {type:'paragraph',text:'B1 — Analyse '+skill+' against the risk and control objective. B2 — Classify supported exceptions and remediation. B3 — Write a defensible conclusion with evidence IDs and open items.'}
+   ]});
+  });
+  return activities;
  }
- box.append(makeNode('p','The instructor Excel workbook supplies selection-screen parameter values only. Use the Academy navigation above to locate the transaction or Fiori app.'));
- return box;
+ let current=null,seq=0;
+ for(const b of blocks){
+  if(b.type==='paragraph'){
+   const txt=String(b.text||'').trim();
+   const match=txt.match(/(?:^|\n)\s*(A2(?:\.\d+)?|A1|B1|B2|B3)\s+([^\n]+)/i);
+   if(match && (/^A2/.test(match[1])||/^[AB][123]$/.test(match[1]))){
+    if(current&&current.parts.length)activities.push(current);
+    current={title:match[1]+' '+match[2].slice(0,110),parts:[],source:'Uploaded SAP Evidence Tutorial'};
+    seq++;
+   }
+   if(current)current.parts.push(b);
+  }else if(current&&b.type==='table')current.parts.push(b);
+ }
+ if(current&&current.parts.length)activities.push(current);
+ if(!activities.length){
+  activities.push({title:'Source procedure and evidence',source:'Uploaded tutorial',parts:blocks});
+ }
+ return activities;
+}
+const academyActivitySelection={};
+function academyNavigationPanel(id){
+ const panel=document.createElement('section');panel.id='academyActivityGuide';panel.style.cssText='border:2px solid #7da5c9;background:#fff;border-radius:10px;padding:14px;margin:12px 0';
+ const activities=academyExecutionActivities(id),idx=Math.min(academyActivitySelection[id]||0,activities.length-1),a=activities[idx];
+ const h=makeNode('h4','Activity-by-activity SAP Execution Guide — '+id);panel.append(h);
+ panel.append(makeNode('p','Choose one activity at a time. Follow the exact navigation, selection screen, output, evidence and conclusion before proceeding. '+(window.academyTrainingMode==='simulation'?'SIMULATION MODE — fictional outputs only.':'SAP ACCESS MODE — use authorised read-only access.')));
+ const chooser=document.createElement('select');chooser.setAttribute('aria-label','Choose SAP execution activity');chooser.style.cssText='width:100%;padding:10px;border:1px solid #9db4cf;border-radius:6px;margin:8px 0';
+ activities.forEach((item,i)=>{const o=document.createElement('option');o.value=i;o.textContent=(i+1)+' / '+activities.length+' — '+item.title;chooser.append(o)});chooser.value=String(idx);
+ const detail=document.createElement('div');detail.style.cssText='margin:12px 0';
+ const controls=document.createElement('div');controls.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px';
+ const previous=document.createElement('button'),next=document.createElement('button'),count=makeNode('span','');
+ previous.type=next.type='button';previous.textContent='Previous activity';next.textContent='Next activity';
+ function render(){
+  const n=Math.min(academyActivitySelection[id]||0,activities.length-1),activity=activities[n];chooser.value=String(n);detail.replaceChildren();
+  detail.append(makeNode('h4',activity.title),makeNode('small',activity.source||'SAP Evidence Tutorial'));
+  if(activity.tcode)detail.append(makeNode('p','SAP T-code / application: '+activity.tcode));
+  for(const part of activity.parts||[]){
+   if(part.type==='paragraph'){const p=makeNode('p',part.text);p.style.cssText='white-space:pre-wrap;line-height:1.6;margin:10px 0';detail.append(p);}
+   else if(part.type==='table'){const wrap=document.createElement('div');wrap.style.overflowX='auto';const table=document.createElement('table');table.style.cssText='border-collapse:collapse;width:100%;font-size:14px;margin:12px 0';(part.rows||[]).forEach((row,i)=>{const tr=document.createElement('tr');row.forEach(cell=>{const td=document.createElement(i===0?'th':'td');td.textContent=cell;td.style.cssText='border:1px solid #cbd5e1;padding:9px;text-align:left;vertical-align:top;'+(i===0?'background:#e6edf7':'');tr.append(td)});table.append(tr)});wrap.append(table);detail.append(wrap);}
+  }
+  previous.disabled=n===0;next.disabled=n===activities.length-1;count.textContent='Activity '+(n+1)+' of '+activities.length;
+ }
+ chooser.onchange=()=>{academyActivitySelection[id]=Number(chooser.value);render()};
+ previous.onclick=()=>{academyActivitySelection[id]=Math.max(0,(academyActivitySelection[id]||0)-1);render()};
+ next.onclick=()=>{academyActivitySelection[id]=Math.min(activities.length-1,(academyActivitySelection[id]||0)+1);render()};
+ controls.append(previous,count,next);panel.append(chooser,detail,controls);render();return panel;
 }
 function updateGuide(){
  let spec=stepSpec[step];const id=(heading.textContent.match(/(?:TF|CV)-[0-9]{2}/)||[])[0]||'this module';
@@ -617,7 +670,7 @@ function updateGuide(){
   const a=steps[step];spec={title:a[0],learn:a[1],demo:a[2],task:a[3],check:a[4]};
  }
  const transaction=(document.querySelector('#sapSimulationLab')?.textContent||'').match(/(?:NWBC|SUIM|SE16N|SM37|STMS|SM51|SM59|DBACOCKPIT|FAGLL03|RZ11|OB52|OB28)/)?.[0]||'the transaction listed in this module';
- instruction.replaceChildren(makeNode('h3','1. Learn — '+spec.title),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),academyNavigationPanel(id),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
+ instruction.replaceChildren(makeNode('h3','1. Learn — '+spec.title),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),(step===1?academyNavigationPanel(id):makeNode('p','SAP activity instructions are available in Step 2 — Execute the SAP transaction.')),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
  exercise.replaceChildren(makeNode('h4','3. Your exercise'),makeNode('p',spec.task),makeNode('h4','4. Completion check'),makeNode('p',spec.check));
 }
 function tag(){
