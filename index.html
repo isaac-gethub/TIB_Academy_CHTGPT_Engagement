@@ -485,4 +485,17 @@ const observer=new MutationObserver(()=>{if(!document.body.contains(bar))return;
 observer.observe(heading,{childList:true,characterData:true,subtree:true});
 paint();
 })();
-</script><script src="./role-pathways.js"></script></html>
+</script><script src="./role-pathways.js"></script><style id="academyCompactButtonsV1">
+/* Consistent content-sized click targets on desktop and Android. */
+button,button[type="button"],button[type="submit"],input[type="button"],input[type="submit"]{
+ width:fit-content!important;max-width:100%!important;min-width:0!important;
+ flex:0 0 auto!important;display:inline-flex!important;align-items:center;justify-content:center;
+ box-sizing:border-box!important;white-space:normal!important;overflow-wrap:anywhere;
+ text-align:center;vertical-align:middle;
+}
+button{min-height:36px}
+#nav button{display:inline-flex!important;margin:4px 6px 4px 0!important;text-align:left;justify-content:flex-start}
+#academyWizard button{flex:0 0 auto!important}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+@media(max-width:700px){button,button[type="button"],button[type="submit"]{max-width:100%!important}#nav button{max-width:100%!important}}
+</style></html>
