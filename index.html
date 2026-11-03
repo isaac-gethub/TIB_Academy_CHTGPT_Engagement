@@ -144,19 +144,15 @@ function renderSapSimulation(chapter){
 }
 const sapExcelGuidance='The instructor will provide an Excel SAP Access Parameters workbook for each step. Refer to your Excel file for the SAP transaction code (T-code) or Fiori menu path, system/client, selection criteria and parameter values for each step. If the file or required values are missing, ask the instructor for the parameters file before proceeding. Do not invent values or results.';
 function handsOnLessonText(value){
- const original=String(value);
+ const original=String(value),v=original.trim();
  if(window.academyTrainingMode==='simulation')return original;
- if(/^(?:SAMPLE[-_]|SIMULATED\s*\||TIB-SIM)/i.test(original.trim()))return 'Use the actual SAP value or evidence reference from the instructor Excel SAP Access Parameters workbook.';
- if(/fictional training value|sample evidence field|fictional sample|fictional training records|training simulation only|assessment limitation|fictional case and evidence challenge/i.test(original))return sapExcelGuidance;
- return original
- .replace(/TIB-SIM\s*\/\s*100|TIB-SIM client 100|TIB-SIM\/100/gi,'instructor-provided SAP system/client')
- .replace(/fictional client 100, reporting period 2026-10/gi,'system/client and reporting period from the instructor Excel workbook')
- .replace(/Select [^.;]{1,100} = [^.;]{1,80}; [^.;]{1,100} = [^.;]{1,80}\./gi,'Use selection fields and values in the instructor Excel SAP Access Parameters workbook.')
- .replace(/2026-10/g,'the reporting period in the instructor Excel workbook')
- .replace(/execute the simulator/gi,'execute the authorized SAP transaction')
- .replace(/fictional|simulated|simulation|sample/gi,'SAP training-system')
- .replace(/no SAP login is required|do not log into SAP|not live SAP execution/gi,'use authorized SAP training-system access')
- .replace(/not a live SAP connection or evidence of real production access/gi,'SAP execution requires your separately authorized training-system login');
+ // Fictional examples are not valid execution parameters for the hands-on track.
+ if(/SAMPLE[-_]|TIB-SIM|fictional|simulated|simulation|sample evidence|training only|read-only demonstration|not live SAP/i.test(v)){
+   if(/^(?:SAP transaction|transaction code|T-code)$/i.test(v))return v;
+   return sapExcelGuidance;
+ }
+ if(/^(?:2026-10|100)$/.test(v))return 'Refer to the instructor Excel workbook for the reporting period or system/client.';
+ return original.replace(/Select [^.;]{1,100} = [^.;]{1,80}; [^.;]{1,100} = [^.;]{1,80}\./gi,'Use selection fields and values in the instructor Excel SAP Access Parameters workbook.');
 }
 function renderModuleModeGuide(chapter){
  const old=document.getElementById('moduleModeGuide');if(old)old.remove();
