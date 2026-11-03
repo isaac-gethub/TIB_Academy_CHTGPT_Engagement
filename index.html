@@ -142,17 +142,37 @@ function renderSapSimulation(chapter){
  }
  lab.append(bar,notice,controls,viewport,status);document.getElementById('content').prepend(lab);paint();
 }
-const sapExcelGuidance='The instructor will provide an Excel SAP Access Parameters workbook for each step. Refer to your Excel file for the SAP transaction code (T-code) or Fiori menu path, system/client, selection criteria and parameter values for each step. If the file or required values are missing, ask the instructor for the parameters file before proceeding. Do not invent values or results.';
+const sapExcelGuidance='The Academy provides the SAP transaction codes (T-codes) and navigation paths for each module. The instructor will provide an Excel SAP Selection Screen Parameters workbook containing the selection-screen field values only. Use the Academy for navigation and the Excel workbook for parameter values. If the workbook or required values are missing, ask the instructor for the parameters file before executing. Do not invent values or results.';
 function handsOnLessonText(value){
  const original=String(value),v=original.trim();
  if(window.academyTrainingMode==='simulation')return original;
- // Fictional examples are not valid execution parameters for the hands-on track.
- if(/SAMPLE[-_]|TIB-SIM|fictional|simulated|simulation|sample evidence|training only|read-only demonstration|not live SAP/i.test(v)){
-   if(/^(?:SAP transaction|transaction code|T-code)$/i.test(v))return v;
-   return sapExcelGuidance;
+ // Preserve the original SAP navigation, T-codes, menu paths and procedure headings.
+ if(/^(?:T-code|Transaction|SAP area|Menu path|Navigation|SAP procedure|SAP transaction|Fiori|NWBC)/i.test(v))return original;
+ if(/SAMPLE[-_]|TIB-SIM|fictional|simulated|simulation|sample evidence|training only|read-only demonstration|not live SAP/i.test(v))return sapExcelGuidance;
+ return original.replace(/2026-10/g,'the instructor-assigned reporting period');
+}
+function renderSapNavigationReference(chapter){
+ const old=document.getElementById('academySapNavigationReference');if(old)old.remove();
+ const section=document.createElement('section');section.id='academySapNavigationReference';
+ section.style.cssText='background:#fff;border:2px solid #8aaacb;border-radius:9px;padding:12px;margin:10px 0';
+ const heading=document.createElement('h3');heading.textContent='SAP T-codes and navigation — '+chapter.id;
+ const lead=document.createElement('p');lead.textContent='Study these Academy-provided transaction codes and SAP navigation paths before class. They apply to both SAP Hands-On and Simulation training.';
+ section.append(heading,lead);
+ const source=(chapter.paragraphs||[]).filter(p=>/T-code\s*:|Menu path\s*:|Navigation\s*:|transaction code\s*:|Fiori.*(?:menu|path)|NWBC.*(?:menu|path)/i.test(p));
+ const addon=window.ACADEMY_ADDONS?.[chapter.id];
+ const profile=typeof SAP_SIM_PROFILES!=='undefined'?SAP_SIM_PROFILES[chapter.id]:null;
+ if(addon)source.unshift('SAP T-code: '+addon.tcode+' — '+addon.screen);
+ if(!source.length&&profile?.[0])source.push('SAP T-code: '+profile[0]+' — '+profile[1]);
+ if(source.length){
+  const list=document.createElement('ol');
+  for(const item of [...new Set(source)]){const li=document.createElement('li');li.textContent=item;li.style.margin='6px 0';list.append(li)}
+  section.append(list);
+ }else{
+  const p=document.createElement('p');p.textContent='Refer to the complete source lesson below for SAP navigation. If a transaction or menu path is not documented, ask the instructor to confirm it before class.';section.append(p);
  }
- if(/^(?:2026-10|100)$/.test(v))return 'Refer to the instructor Excel workbook for the reporting period or system/client.';
- return original.replace(/Select [^.;]{1,100} = [^.;]{1,80}; [^.;]{1,100} = [^.;]{1,80}\./gi,'Use selection fields and values in the instructor Excel SAP Access Parameters workbook.');
+ const foot=document.createElement('p');foot.style.fontWeight='650';foot.textContent='Excel workbook: selection-screen parameter VALUES only. The instructor does not supply the T-codes or navigation paths.';
+ section.append(foot);
+ return section;
 }
 function renderModuleModeGuide(chapter){
  const old=document.getElementById('moduleModeGuide');if(old)old.remove();
@@ -177,7 +197,7 @@ function renderModuleModeGuide(chapter){
  for(const step of actions){const li=document.createElement('li');li.textContent=step;steps.append(li)}
  const note=document.createElement('p');note.style.cssText='font-size:13px;color:#415674;margin:8px 0 0';
  note.textContent=isSim?'Training mode: Simulation. The SAP procedure below is reference material, not an instruction to access SAP. All evidence must be fictional or approved sample evidence.':'Training mode: SAP Hands-On. The procedure below guides work in an external authorized SAP system; the Academy does not execute SAP transactions.';
- guide.append(title,steps,note);
+ guide.append(title,renderSapNavigationReference(chapter),steps,note);
  document.getElementById('content').prepend(guide);
 }
 function show(i){if(document.querySelector('#workspace')?.dataset.loaded==='yes')capture();current=i;heading.textContent=chapters[i].id+' '+chapters[i].title;document.getElementById('workpaperTitle').textContent=chapters[i].id;body.replaceChildren();renderModuleModeGuide(chapters[i]);renderSapSimulation(chapters[i]);for(const block of fullLessons[chapters[i].id]||[]){if(block.type==='paragraph'){const p=document.createElement('p');p.textContent=handsOnLessonText(block.text);body.append(p)}else{const holder=document.createElement('div');holder.style.overflowX='auto';const table=document.createElement('table');table.style.cssText='border-collapse:collapse;width:100%;font-size:14px;margin:12px 0';block.rows.forEach((cells,ri)=>{const tr=document.createElement('tr');cells.forEach(value=>{const td=document.createElement(ri===0?'th':'td');td.textContent=handsOnLessonText(value);td.style.cssText='border:1px solid #cbd5e1;padding:8px;vertical-align:top;text-align:left;'+(ri===0?'background:#e6edf7':'');tr.append(td)});table.append(tr)});holder.append(table);body.append(holder)}}const record=records[chapters[i].id]||{};for(const f of fields)document.getElementById(f).value=record[f]|| (f==='stage'?'not_started':'');const checks=document.getElementById('checks');checks.replaceChildren();checklist.forEach((label,i)=>{const el=document.createElement('label'),cb=document.createElement('input');cb.type='checkbox';cb.id='check'+i;cb.checked=!!(record.checks||[])[i];el.append(cb,document.createTextNode(label));checks.append(el)});renderEvidence(record.evidenceRows||[]);document.getElementById('quality').textContent='';document.getElementById('saved').textContent=record.updatedAt?'Last saved: '+new Date(record.updatedAt).toLocaleString():'Not saved';renderNav();document.querySelector('#workspace').dataset.loaded='yes'}
@@ -333,7 +353,7 @@ function startAcademyCloud(){
      modeBanner.append(manage);
    }
    modeInstructions.innerHTML=hands
-   ?'<h2>SAP Hands-On Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>Use the actual SAP training system available to you. For each step, refer to the instructor-provided Excel SAP Access Parameters workbook for the SAP T-code or Fiori menu path and required parameter values. If missing, ask the instructor for the file before proceeding. Follow each module\'s SAP area, procedure and evidence requirements. Perform only transactions and data exports authorized by your instructor. Record actual transaction codes, system/client, selection variants, dates, record counts, screenshots and export filenames in the workpaper. Analyse real training-system evidence, document exceptions, then submit for Lead review.</p><p><strong>Important:</strong> This Academy does not connect directly to SAP. Open SAP GUI/Fiori separately. Never upload confidential production or client data without explicit authorization.</p>'
+   ?'<h2>SAP Hands-On Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>Use the actual SAP training system available to you. Use the T-codes and navigation paths displayed in this Academy. Refer to the instructor Excel workbook only for SAP selection-screen parameter values. If missing, ask the instructor for the parameter file before executing. Follow each module\'s SAP area, procedure and evidence requirements. Perform only transactions and data exports authorized by your instructor. Record actual transaction codes, system/client, selection variants, dates, record counts, screenshots and export filenames in the workpaper. Analyse real training-system evidence, document exceptions, then submit for Lead review.</p><p><strong>Important:</strong> This Academy does not connect directly to SAP. Open SAP GUI/Fiori separately. Never upload confidential production or client data without explicit authorization.</p>'
    :'<h2>SAP Simulation Training — Two Projects (TF-01–TF-24 / CV-01–CV-26)</h2><p>No SAP login is required. Treat each module as a fictional SAP case. Study the SAP procedures as read-only demonstrations; do not attempt live transactions. Use fictional company, system/client, selection criteria, sample evidence identifiers, record counts and filenames. Analyse the scenario, record assumptions and conclusions in the same workpaper, and submit to your Lead for review.</p><p><strong>Important:</strong> Clearly mark every simulated evidence reference SAMPLE or SIMULATED. Do not present it as an actual SAP extraction.</p>';
  }
  async function loadTrainingMode(){
@@ -552,8 +572,8 @@ function updateGuide(){
  const addon=window.ACADEMY_ADDONS?.[id];if(addon){spec={...spec,learn:addon.objective+' Required skills: '+addon.skills.join('; ')+'.',demo:step===0?('Scenario: '+addon.risk):step===1?('In '+addon.tcode+' select '+addon.a+' = '+addon.sample[1]+' and '+addon.b+' = '+addon.sample[2]+'. Execute (F8) and compare the displayed fictional result to '+addon.sample.join(' | ')+'.'):step===2?('Capture EV-'+id.replace('-','')+'-01, TIB-SIM client 100, period 2026-10, selection criteria, displayed record count and a screenshot.'):step===3?('Investigate: '+addon.risk+'. Separate observed output from assumptions.'):step===4?('Explain the control outcome and recommended remediation for '+addon.sample.at(-1)+'.'):('Save draft, verify cloud status if signed in, and submit for Lead review.'),task:'Perform the '+addon.title+' exercise, document your own observed simulated evidence and complete the current workpaper fields.',check:'Can a Controls Lead reproduce your selections, validate the exception and defend your conclusion?'};}
  if(window.academyTrainingMode!=='simulation'){
   const steps=[
-   ['Understand the control test','Identify the control objective, risk and SAP scope.',sapExcelGuidance,'Read the instructor Excel workbook for this module. Confirm transaction code or Fiori menu path, system/client, fields, parameter values and period.','Do you have the instructor Excel workbook and all required values?'],
-   ['Execute the SAP transaction','Perform the assigned exercise in the authorized real SAP training system.','The instructor will demonstrate the SAP transaction or Fiori app. '+sapExcelGuidance,'Open SAP GUI or Fiori. Enter only the parameters supplied in the instructor Excel file, execute where authorized and inspect actual results.','Did you execute the instructed SAP step and review its actual output?'],
+   ['Understand the control test','Identify the control objective, risk and SAP scope.',sapExcelGuidance,'Read the Academy T-code and navigation reference for this module. Use the instructor Excel workbook for selection-screen parameter values and period.','Do you have the instructor Excel workbook and all required values?'],
+   ['Execute the SAP transaction','Perform the assigned exercise in the authorized real SAP training system.','The instructor will demonstrate the SAP transaction or Fiori app using the Academy T-code and navigation. '+sapExcelGuidance,'Open SAP GUI or Fiori using the Academy navigation. Enter only the selection-screen parameter values supplied in the instructor Excel file, execute where authorized and inspect actual results.','Did you execute the instructed SAP step and review its actual output?'],
    ['Capture SAP evidence','Record reproducible evidence from the real SAP training system.','Record the SAP T-code or menu path, system/client, Excel selection values, period, actual count, date and authorized screenshot/export filename.','Complete the evidence register with actual observed results. If the instructor file is missing, request it before proceeding.','Can the Controls Lead reproduce your results?'],
    ['Analyse SAP results','Interpret actual results without inventing data.','Use actual SAP output to describe counts, exceptions and limitations.','Document observed facts and evidence references; ask the instructor to clarify missing parameters.','Are conclusions supported by actual SAP evidence?'],
    ['Conclude and validate','Document the control conclusion and unresolved items.','Based on actual SAP evidence [reference], the control [met/did not meet/cannot yet establish] its objective because [observed reason].','Complete the workpaper conclusion, open items and Lead decision.','Is the conclusion traceable to actual SAP evidence?'],
