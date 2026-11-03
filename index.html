@@ -211,6 +211,7 @@ function startAcademyCloud(){
  bar.innerHTML='<strong>Secure Academy workspace</strong> <span id="cloudState" role="status">Connecting to Supabase…</span> <div id="authPanel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0"><input id="cloudEmail" type="email" autocomplete="username" placeholder="TIB email address" aria-label="Account email" style="padding:10px;min-width:230px"><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password" style="padding:10px;min-width:190px"><button id="cloudLogin">Sign in</button><button id="cloudReset">Forgot password?</button></div><div id="passwordPanel" style="display:none;margin:12px 0"><label>New password <input id="cloudNewPassword" type="password" autocomplete="new-password" minlength="12" placeholder="New password (12+ characters)"></label><label>Confirm new password <input id="cloudConfirmPassword" type="password" autocomplete="new-password" minlength="12" placeholder="Confirm new password"></label><button id="cloudSetPassword">Set password</button></div> <button id="cloudSave">Save current workpaper to cloud</button> <button id="cloudLoad">Load my cloud workpapers</button> <button id="cloudSubmit">Submit for Lead review</button> <button id="cloudReopen">Reopen requested changes</button> ';
  bar.insertAdjacentHTML('beforeend','<section id="leadPanel" style="margin-top:8px;border-top:1px solid #bbc;padding-top:8px"><strong>Assigned Controls Lead review</strong> <button id="leadRefresh">Load assigned submissions</button><div id="leadRows"></div></section>');
  document.body.append(bar);
+ document.getElementById('leadPanel').style.display='none';document.getElementById('cloudReopen').style.display='none';document.getElementById('cloudReopen').textContent='Revise Workpaper';
  const logoutButton=document.createElement('button');
  logoutButton.id='cloudLogout';logoutButton.type='button';logoutButton.textContent='Sign out';
  logoutButton.setAttribute('aria-label','Sign out of TIB Academy');
@@ -310,6 +311,18 @@ function startAcademyCloud(){
  const el=id=>document.getElementById(id),notice=s=>el('cloudState').textContent=s;
  if(!client){notice('Authentication client unavailable — library failed to initialize. Please report this error.');return}
  let user=null;
+ async function updateReviewActions(){
+  const lead=el('leadPanel'),reopen=el('cloudReopen');lead.style.display='none';reopen.style.display='none';
+  if(!user)return;
+  const uid=user.id,selected=chapters[current]?.id;
+  const [assigned,own]=await Promise.all([
+   client.from('tib_academy_workpaper_records').select('id').eq('reviewer_id',uid).neq('owner_id',uid).limit(1),
+   client.from('tib_academy_workpaper_records').select('status,decision').eq('owner_id',uid).eq('test_id',selected).maybeSingle()
+  ]);
+  if(user?.id!==uid)return;
+  if(!assigned.error&&assigned.data?.length)lead.style.display='block';
+  if(!own.error&&own.data?.status==='reviewed'&&own.data.decision==='changes_requested')reopen.style.display='inline-flex';
+ }
  const resetParams=new URLSearchParams(location.search);
  const recoveryRequested=resetParams.get('academy_reset')==='1'||location.hash.includes('type=recovery')||resetParams.has('token_hash');
  let recoveryMode=recoveryRequested;
@@ -358,6 +371,7 @@ function startAcademyCloud(){
    user=data?.user||null;
    showAcademy(!!user);
    if(user)await loadTrainingMode();
+   await updateReviewActions();
    notice(user?'Signed in: '+user.email:(error&&error.message!=='Auth session missing!'?'Unable to check session: '+error.message:'Enter your TIB email and password to sign in'));
  }
  client.auth.onAuthStateChange((event)=>{
@@ -406,7 +420,8 @@ function startAcademyCloud(){
    await refresh();
  };
  el('cloudSubmit').onclick=async()=>{await refresh();if(!user)return notice('Sign in first');capture();const id=chapters[current].id;const {data,error}=await client.from('tib_academy_workpaper_records').select('id,status,reviewer_id').eq('owner_id',user.id).eq('test_id',id).maybeSingle();if(error)return notice(error.message);if(!data)return notice('Save this workpaper to the cloud first');if(!data.reviewer_id)return notice('A Controls Lead must be assigned before submission');const res=await client.rpc('tib_academy_workflow',{p_id:data.id,p_action:'submit'});notice(res.error?res.error.message:id+' submitted and locked for review')};
- el('cloudReopen').onclick=async()=>{await refresh();if(!user)return notice('Sign in first');const id=chapters[current].id;const {data,error}=await client.from('tib_academy_workpaper_records').select('id').eq('owner_id',user.id).eq('test_id',id).maybeSingle();if(error||!data)return notice(error?.message||'No cloud workpaper');const res=await client.rpc('tib_academy_workflow',{p_id:data.id,p_action:'reopen'});notice(res.error?res.error.message:id+' reopened for revision')};
+ el('cloudReopen').onclick=async()=>{await refresh();if(!user)return notice('Sign in first');const id=chapters[current].id;const {data,error}=await client.from('tib_academy_workpaper_records').select('id,status,decision').eq('owner_id',user.id).eq('test_id',id).maybeSingle();if(error||!data)return notice(error?.message||'No cloud workpaper');if(data.status!=='reviewed'||data.decision!=='changes_requested')return notice('Revision is available only after the Lead requests changes');const res=await client.rpc('tib_academy_workflow',{p_id:data.id,p_action:'reopen'});notice(res.error?res.error.message:id+' reopened for revision');await updateReviewActions()};
+ new MutationObserver(()=>{if(user)updateReviewActions()}).observe(heading,{childList:true});
  el('leadRefresh').onclick=async()=>{await refresh();if(!user)return notice('Sign in first');const target=el('leadRows');target.replaceChildren();const {data,error}=await client.from('tib_academy_workpaper_records').select('id,test_id,status,content,decision,review_comment').eq('reviewer_id',user.id).order('updated_at',{ascending:false});if(error)return notice(error.message);if(!data?.length){target.textContent='No assigned workpapers';return}for(const w of data){const wrap=document.createElement('div');wrap.style='border:1px solid #aab;padding:8px;margin:5px 0;background:white';const title=document.createElement('strong');title.textContent=w.test_id+' — '+w.status;wrap.append(title);const details=document.createElement('pre');details.style='white-space:pre-wrap;max-height:180px;overflow:auto';details.textContent=JSON.stringify(w.content,null,2).slice(0,12000);wrap.append(details);if(w.status==='submitted'){const select=document.createElement('select');for(const [value,label] of [['','Select a decision'],['changes_requested','Request changes'],['approved','Approve']]){const opt=document.createElement('option');opt.value=value;opt.textContent=label;select.append(opt)}const comment=document.createElement('textarea');comment.placeholder='Required review explanation (at least 5 characters)';const button=document.createElement('button');button.textContent='Record Lead decision';button.onclick=async()=>{if(!select.value||comment.value.trim().length<5)return notice('Select a decision and enter a review comment');const res=await client.rpc('tib_academy_workflow',{p_id:w.id,p_action:select.value,p_comment:comment.value.trim()});notice(res.error?res.error.message:'Review saved');if(!res.error)el('leadRefresh').click()};wrap.append(select,comment,button)}else if(w.decision){const note=document.createElement('p');note.textContent='Decision: '+w.decision+' — '+(w.review_comment||'');wrap.append(note)}target.append(wrap)}};
  logoutButton.onclick=async()=>{
   if(logoutButton.disabled)return;
