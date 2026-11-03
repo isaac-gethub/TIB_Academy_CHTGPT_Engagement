@@ -94,19 +94,64 @@ function startAcademyCloud(){
   academyHeader.append(logoutButton);
  }
  else bar.prepend(logoutButton);
+
+ const modeBanner=document.createElement('div');
+ modeBanner.id='academyModeBanner';modeBanner.style.cssText='background:#e6f0fb;color:#183658;padding:12px 20px;font-weight:650;border-bottom:1px solid #bfd1e6';
+ const modeInstructions=document.createElement('section');
+ modeInstructions.id='academyModeInstructions';modeInstructions.style.cssText='background:#fff;border:2px solid #b5cbe4;border-radius:10px;padding:18px;margin:15px auto;max-width:1260px;line-height:1.55';
+ const adminPanel=document.createElement('section');adminPanel.id='academyAdminPanel';adminPanel.style.cssText='display:none;background:#fff;border:2px solid #17355e;border-radius:10px;padding:18px;margin:15px auto;max-width:1260px';
+ adminPanel.innerHTML='<h2>Academy Administrator — Trainee Training Modes</h2><p>Only the Administrator can assign a trainee to SAP Hands-On or Simulation. Default: SAP Hands-On.</p><label>Trainee account email <input id="academyTraineeEmail" type="email" placeholder="trainee@example.com"></label> <label>Assigned training <select id="academyModeChoice"><option value="hands_on">SAP Hands-On</option><option value="simulation">SAP Simulation</option></select></label> <button id="academyAssignMode" type="button">Save assignment</button><button id="academyRefreshModes" type="button">Refresh assignments</button><p id="academyAdminMessage" role="status"></p><div id="academyAssignments"></div>';
+ if(academyHeader)academyHeader.after(modeBanner,modeInstructions,adminPanel);
+ let trainingMode='hands_on';
+ function applyTrainingMode(mode){
+   trainingMode=mode==='simulation'?'simulation':'hands_on';
+   const hands=trainingMode==='hands_on';
+   modeBanner.textContent=hands?'TRAINING VERSION: SAP HANDS-ON — Authorized SAP access required':'TRAINING VERSION: SAP SIMULATION — No SAP system access required';
+   modeInstructions.innerHTML=hands
+   ?'<h2>SAP Hands-On Training — TF-01 to TF-20</h2><p>Use the actual SAP training system available to you. Follow each module\'s SAP area, procedure and evidence requirements. Perform only transactions and data exports authorized by your instructor. Record actual transaction codes, system/client, selection variants, dates, record counts, screenshots and export filenames in the workpaper. Analyse real training-system evidence, document exceptions, then submit for Lead review.</p><p><strong>Important:</strong> This Academy does not connect directly to SAP. Open SAP GUI/Fiori separately. Never upload confidential production or client data without explicit authorization.</p>'
+   :'<h2>SAP Simulation Training — TF-01 to TF-20</h2><p>No SAP login is required. Treat each module as a fictional SAP case. Study the SAP procedures as read-only demonstrations; do not attempt live transactions. Use fictional company, system/client, selection criteria, sample evidence identifiers, record counts and filenames. Analyse the scenario, record assumptions and conclusions in the same workpaper, and submit to your Lead for review.</p><p><strong>Important:</strong> Clearly mark every simulated evidence reference SAMPLE or SIMULATED. Do not present it as an actual SAP extraction.</p>';
+ }
+ async function loadTrainingMode(){
+   if(!user)return;
+   if(user.email?.toLowerCase()==='admin@tib-systems.com'){
+     adminPanel.style.display='block';await loadAssignments();
+   }else adminPanel.style.display='none';
+   const {data,error}=await client.from('tib_academy_training_modes').select('mode').eq('trainee_id',user.id).maybeSingle();
+   if(error){notice('Unable to load assigned training version: '+error.message);showAcademy(false);return;}
+   applyTrainingMode(data?.mode||'hands_on');
+ }
+ async function loadAssignments(){
+   const {data,error}=await client.rpc('tib_academy_list_modes');
+   const target=document.getElementById('academyAssignments');target.replaceChildren();
+   if(error){document.getElementById('academyAdminMessage').textContent=error.message;return;}
+   for(const item of data||[]){
+     const row=document.createElement('p');row.textContent=item.email+' — '+(item.mode==='hands_on'?'SAP Hands-On':'SAP Simulation');target.append(row);
+   }
+ }
+ document.getElementById('academyRefreshModes').onclick=loadAssignments;
+ document.getElementById('academyAssignMode').onclick=async()=>{
+   const email=document.getElementById('academyTraineeEmail').value.trim();
+   const mode=document.getElementById('academyModeChoice').value;
+   if(!email)return document.getElementById('academyAdminMessage').textContent='Enter a trainee email.';
+   const {data,error}=await client.rpc('tib_academy_assign_mode',{p_email:email,p_mode:mode});
+   document.getElementById('academyAdminMessage').textContent=error?'Assignment failed: '+error.message:data;
+   if(!error)await loadAssignments();
+ };
+ applyTrainingMode('hands_on');
  const academyMain=document.querySelector('main');
  function showAcademy(signedIn){
    loginScreen.style.display=signedIn?'none':'flex';
    if(academyHeader)academyHeader.style.display=signedIn?'flex':'none';
    if(academyMain)academyMain.style.display=signedIn?'grid':'none';
    bar.style.display=signedIn?'block':'none';
+   modeBanner.style.display=signedIn?'block':'none';modeInstructions.style.display=signedIn?'block':'none';if(!signedIn)adminPanel.style.display='none';
    logoutButton.style.display=signedIn?'inline-block':'none';
  }
  showAcademy(false);document.body.classList.add('academy-auth-ready');
  const el=id=>document.getElementById(id),notice=s=>el('cloudState').textContent=s;
  if(!client){notice('Authentication client unavailable — library failed to initialize. Please report this error.');return}
  let user=null;
- async function refresh(){const {data,error}=await client.auth.getUser();user=data?.user||null;showAcademy(!!user);notice(user?'Signed in: '+user.email:(error&&error.message!=='Auth session missing!'?'Unable to check session: '+error.message:'Enter your TIB email and password to sign in'));}
+ async function refresh(){const {data,error}=await client.auth.getUser();user=data?.user||null;showAcademy(!!user);if(user)await loadTrainingMode();notice(user?'Signed in: '+user.email:(error&&error.message!=='Auth session missing!'?'Unable to check session: '+error.message:'Enter your TIB email and password to sign in'));}
  client.auth.onAuthStateChange(()=>{setTimeout(refresh,0)});refresh();
  el('cloudLogin').onclick=async()=>{const email=el('cloudEmail').value.trim(),password=el('cloudPassword').value;if(!email||!password)return notice('Enter email and password');const {error}=await client.auth.signInWithPassword({email,password});el('cloudPassword').value='';if(error)return notice('Sign in failed: '+error.message);await refresh()};
  el('cloudReset').onclick=async()=>{const email=el('cloudEmail').value.trim();if(!email)return notice('Enter your account email first');const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});notice(error?'Password recovery unavailable: '+error.message:'If this account is registered, password recovery instructions will be sent to its email address.')};
