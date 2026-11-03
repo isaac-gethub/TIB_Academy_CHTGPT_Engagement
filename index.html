@@ -609,20 +609,26 @@ function academyExecutionActivities(id){
   });
   return activities;
  }
- let current=null,seq=0;
- for(const b of blocks){
-  if(b.type==='paragraph'){
-   const txt=String(b.text||'').trim();
-   const match=txt.match(/(?:^|\n)\s*(A2(?:\.\d+)?|A1|B1|B2|B3)\s+([^\n]+)/i);
-   if(match && (/^A2/.test(match[1])||/^[AB][123]$/.test(match[1]))){
-    if(current&&current.parts.length)activities.push(current);
-    current={title:match[1]+' '+match[2].slice(0,110),parts:[],source:'Uploaded SAP Evidence Tutorial'};
-    seq++;
+ let current=null;
+ const flush=()=>{if(current&&current.parts.length)activities.push(current);};
+ for(const block of blocks){
+  if(block.type==='paragraph'){
+   const txt=String(block.text||'');
+   // Corvane source paragraphs can contain multiple A2.x headings and their full procedures.
+   const lines=txt.split('\n');let chunk=[];
+   const addChunk=()=>{if(chunk.length&&current){current.parts.push({type:'paragraph',text:chunk.join('\n').trim()});}chunk=[];};
+   for(const line of lines){
+    const m=line.match(/^\s*(A2(?:\.\d+)?|A1|B1|B2|B3)\s+(.+?)\s*$/i);
+    if(m&&(/^(?:A2|A1|B1|B2|B3)/i.test(m[1]))){
+     addChunk();flush();
+     current={title:m[1]+' '+m[2].slice(0,120),parts:[],source:'Uploaded SAP Evidence Tutorial'};
+    }
+    if(current)chunk.push(line);
    }
-   if(current)current.parts.push(b);
-  }else if(current&&b.type==='table')current.parts.push(b);
+   addChunk();
+  }else if(current&&block.type==='table')current.parts.push(block);
  }
- if(current&&current.parts.length)activities.push(current);
+ flush();
  if(!activities.length){
   activities.push({title:'Source procedure and evidence',source:'Uploaded tutorial',parts:blocks});
  }
