@@ -220,34 +220,55 @@ function startAcademyCloud(){
  const el=id=>document.getElementById(id),notice=s=>el('cloudState').textContent=s;
  if(!client){notice('Authentication client unavailable — library failed to initialize. Please report this error.');return}
  let user=null;
- const recoveryRequested=new URLSearchParams(location.search).get('academy_reset')==='1'||location.hash.includes('type=recovery');
+ const resetParams=new URLSearchParams(location.search);
+ const recoveryRequested=resetParams.get('academy_reset')==='1'||location.hash.includes('type=recovery')||resetParams.has('token_hash');
  let recoveryMode=recoveryRequested;
+ let recoveryVerified=false;
  function showRecoveryForm(message){
    recoveryMode=true;
    showAcademy(false);
    el('authPanel').style.display='none';
    el('passwordPanel').style.display='block';
    loginSubtitle.textContent='Choose a new password for your Academy account';
-   notice(message||'Enter and confirm your new password (at least 12 characters).');
+   if(message)notice(message);
+ }
+ async function verifyRecovery(){
+   if(!recoveryMode)return;
+   showRecoveryForm('Checking your password reset link…');
+   try{
+     if(resetParams.has('error')||location.hash.includes('error='))throw new Error('This reset link is invalid or expired.');
+     const code=resetParams.get('code');
+     const tokenHash=resetParams.get('token_hash');
+     if(code){
+       const result=await client.auth.exchangeCodeForSession(code);
+       if(result.error)throw result.error;
+     }else if(tokenHash){
+       const result=await client.auth.verifyOtp({token_hash:tokenHash,type:'recovery'});
+       if(result.error)throw result.error;
+     }
+     const result=await client.auth.getSession();
+     if(result.error)throw result.error;
+     recoveryVerified=!!result.data?.session;
+     notice(recoveryVerified?'Reset link verified. Enter your new password and click Set password.':'Reset link could not be verified. Request a new password reset email.');
+   }catch(error){
+     recoveryVerified=false;
+     notice('Password reset verification failed: '+error.message+' Request a new reset email.');
+   }
  }
  async function refresh(){
+   if(recoveryMode){showRecoveryForm();return}
    const {data,error}=await client.auth.getUser();
    user=data?.user||null;
-   if(recoveryMode){showRecoveryForm(user?'Set your new password below.':'Verifying password reset link…');return}
    showAcademy(!!user);
    if(user)await loadTrainingMode();
    notice(user?'Signed in: '+user.email:(error&&error.message!=='Auth session missing!'?'Unable to check session: '+error.message:'Enter your TIB email and password to sign in'));
  }
  client.auth.onAuthStateChange((event)=>{
-   if(event==='PASSWORD_RECOVERY'){showRecoveryForm('Reset link verified. Enter your new password below.');return}
-   setTimeout(refresh,0);
+   if(event==='PASSWORD_RECOVERY'){recoveryVerified=true;showRecoveryForm('Reset link verified. Enter your new password and click Set password.');return}
+   if(!recoveryMode)setTimeout(refresh,0);
  });
- if(recoveryRequested){
-   showRecoveryForm('Verifying your password reset link…');
-   const params=new URLSearchParams(location.search);
-   if(params.has('error')||location.hash.includes('error='))notice('Password reset link is invalid or expired. Request a fresh link from the sign-in page.');
- }
- refresh();
+ if(recoveryRequested){showRecoveryForm('Checking your password reset link…');verifyRecovery()}
+ else refresh();
  el('cloudLogin').onclick=async()=>{const email=el('cloudEmail').value.trim(),password=el('cloudPassword').value;if(!email||!password)return notice('Enter email and password');const {error}=await client.auth.signInWithPassword({email,password});el('cloudPassword').value='';if(error)return notice('Sign in failed: '+error.message);await refresh()};
  el('cloudReset').onclick=async()=>{
    const email=el('cloudEmail').value.trim();
@@ -275,11 +296,12 @@ function startAcademyCloud(){
    if(Array.from(password).length<12){validateRecoveryPassword();return notice('Password must contain at least 12 characters ('+Array.from(password).length+' entered).')}
    if(password!==confirm)return notice('Passwords do not match');
    const {data}=await client.auth.getSession();
-   if(!data?.session)return notice('The reset link has not been verified or has expired. Request a new password reset email.');
+   if(!data?.session||!recoveryVerified)return notice('Password reset link is not verified. Request a fresh reset email and use its latest link.');
    const {error}=await client.auth.updateUser({password});
    if(error)return notice('Password update failed: '+error.message);
    el('cloudNewPassword').value='';el('cloudConfirmPassword').value='';
    recoveryMode=false;
+   recoveryVerified=false;
    history.replaceState(null,'',location.pathname);
    el('passwordPanel').style.display='none';el('authPanel').style.display='flex';
    loginSubtitle.textContent='Sign in to continue your training';
