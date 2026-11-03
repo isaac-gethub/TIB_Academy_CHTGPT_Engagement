@@ -223,7 +223,8 @@ function startAcademyCloud(){
 
  const url='https://blfgwysgekfqhcafofhe.supabase.co';
  const key='sb_publishable_ThLetpd4hj49fjce-kXoFA_v4ghwIqV';
- const client=window.supabase?.createClient(url,key,{auth:{flowType:'pkce'}});
+ const isPasswordResetCallback=new URLSearchParams(location.search).get('academy_reset')==='1';
+ const client=window.supabase?.createClient(url,key,{auth:{flowType:'pkce',detectSessionInUrl:!isPasswordResetCallback}});
  const bar=document.createElement('aside');bar.style='background:#e9f1fb;border-top:1px solid #b9c9dd;padding:16px;margin:24px auto;max-width:1260px;border-radius:12px';
  bar.innerHTML='<strong>Secure Academy workspace</strong> <span id="cloudState" role="status">Connecting to Supabase…</span> <div id="authPanel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0"><input id="cloudEmail" type="email" autocomplete="username" placeholder="TIB email address" aria-label="Account email" style="padding:10px;min-width:230px"><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password" style="padding:10px;min-width:190px"><button id="cloudLogin">Sign in</button><button id="cloudReset">Forgot password?</button></div><div id="passwordPanel" style="display:none;margin:12px 0"><label>New password <input id="cloudNewPassword" type="password" autocomplete="new-password" minlength="12" placeholder="New password (12+ characters)"></label><label>Confirm new password <input id="cloudConfirmPassword" type="password" autocomplete="new-password" minlength="12" placeholder="Confirm new password"></label><button id="cloudSetPassword">Set password</button></div> <button id="cloudSave">Save current workpaper to cloud</button> <button id="cloudLoad">Load my cloud workpapers</button> <button id="cloudSubmit">Submit for Lead review</button> <button id="cloudReopen">Reopen requested changes</button> ';
  bar.insertAdjacentHTML('beforeend','<section id="leadPanel" style="margin-top:8px;border-top:1px solid #bbc;padding-top:8px"><strong>Assigned Controls Lead review</strong> <button id="leadRefresh">Load assigned submissions</button><div id="leadRows"></div></section>');
@@ -407,15 +408,24 @@ function startAcademyCloud(){
    showRecoveryForm('Checking your password reset link…');
    try{
      if(resetParams.has('error')||location.hash.includes('error='))throw new Error('This reset link is invalid or expired.');
-     // Supabase JS handles the emailed PKCE callback during client initialization.
-     // Avoid exchanging the same authorization code twice.
-     const result=await boundedAuth(client.auth.getSession());
-     if(result.error)throw result.error;
-     recoveryVerified=!!result.data?.session;
-     notice(recoveryVerified?'Reset link verified. Enter your new password and click Set password.':'Reset link not verified. Open the newest password-reset email link.');
+     let result;
+     const code=resetParams.get('code');
+     if(code){
+       // Handle the PKCE code explicitly. Automatic URL detection is disabled for this callback,
+       // avoiding simultaneous code exchange and getSession calls waiting on the same auth lock.
+       result=await boundedAuth(client.auth.exchangeCodeForSession(code));
+       if(result.error)throw result.error;
+       recoveryVerified=!!result.data?.session;
+       if(recoveryVerified)history.replaceState(null,'',location.pathname+'?academy_reset=1');
+     }else{
+       result=await boundedAuth(client.auth.getSession());
+       if(result.error)throw result.error;
+       recoveryVerified=!!result.data?.session;
+     }
+     notice(recoveryVerified?'Reset link verified. Enter your new password and click Set password.':'Reset link not verified. Request a new password-reset email.');
    }catch(error){
      recoveryVerified=false;
-     notice('Password reset verification failed: '+error.message);
+     notice('Password reset verification failed: '+error.message+'. Request a fresh reset link if needed.');
    }
    recoveryButtonState();
  }
