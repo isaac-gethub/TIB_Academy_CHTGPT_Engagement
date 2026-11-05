@@ -651,7 +651,7 @@ function academyNavigationPanel(id,phase='execute'){
  previous.type=next.type='button';previous.textContent='Previous activity';next.textContent='Next activity';
  function render(){
   const n=Math.min(academyActivitySelection[key]||0,activities.length-1),activity=activities[n];chooser.value=String(n);detail.replaceChildren();
-  detail.append(makeNode('h4',activity.title),makeNode('small',activity.source||'SAP Evidence Tutorial'));
+  detail.append(academyCoachingPanel(id,phase==='conclude'?4:1,activity),makeNode('h4',activity.title),makeNode('small',activity.source||'SAP Evidence Tutorial'));
   if(activity.tcode)detail.append(makeNode('p','SAP T-code / application: '+activity.tcode));
   for(const part of activity.parts||[]){
    if(part.type==='paragraph'){const p=makeNode('p',part.text);p.style.cssText='white-space:pre-wrap;line-height:1.6;margin:10px 0';detail.append(p);}
@@ -659,10 +659,39 @@ function academyNavigationPanel(id,phase='execute'){
   }
   previous.disabled=n===0;next.disabled=n===activities.length-1;count.textContent='Activity '+(n+1)+' of '+activities.length;
  }
- chooser.onchange=()=>{academyActivitySelection[id]=Number(chooser.value);render()};
- previous.onclick=()=>{academyActivitySelection[id]=Math.max(0,(academyActivitySelection[id]||0)-1);render()};
- next.onclick=()=>{academyActivitySelection[id]=Math.min(activities.length-1,(academyActivitySelection[id]||0)+1);render()};
+ chooser.onchange=()=>{academyActivitySelection[key]=Number(chooser.value);render()};
+ previous.onclick=()=>{academyActivitySelection[key]=Math.max(0,(academyActivitySelection[key]||0)-1);render()};
+ next.onclick=()=>{academyActivitySelection[key]=Math.min(activities.length-1,(academyActivitySelection[key]||0)+1);render()};
  controls.append(previous,count,next);panel.append(chooser,detail,controls);render();return panel;
+}
+/* Universal self-study coaching for all 50 Academy modules. Source material remains authoritative. */
+function academyCoachingPanel(id,stageNumber,activity){
+ const panel=document.createElement('section');panel.style.cssText='background:#eef5ff;border:2px solid #8fb6d7;border-radius:10px;padding:15px;margin:12px 0;line-height:1.65';
+ const h=makeNode('h4','Guided self-study — what to do now');panel.append(h);
+ const objectives=[
+ ['Read the assignment','Identify the control objective, risk, system and population. Read the original test card before doing anything in SAP.','In your own words, what are you trying to prove or disprove?'],
+ ['Follow the SAP procedure','Use the activity selector and the original source instructions below. Locate the T-code or Fiori navigation, enter only the stated selection parameters, execute the authorised display action and inspect the result.','Which transaction, parameters and source records produced your result?'],
+ ['Capture and label evidence','Capture the selection criteria and output. Record the SAP SID/client, date, source table/report, row count and a unique EV reference. A table name is NOT an evidence ID.','Can another trainee reproduce your evidence from the saved criteria?'],
+ ['Compare actual data to expected condition','List the observed records and compare them with the documented control requirement or approved inventory. Identify missing, unexpected, mismatched or unapproved entries.','What specific record supports the exception, and what is still unconfirmed?'],
+ ['Make a defensible conclusion','State the observed fact, cite the evidence, identify the risk, ask the owner for clarification and qualify the conclusion when evidence is incomplete.','Does your conclusion go beyond what the evidence proves?'],
+ ['Save and submit for review','Check every required workpaper field, save to cloud when connected, and submit to the Controls Lead. Never describe simulated data as a live SAP extract.','Has the workpaper actually been saved and submitted, rather than merely downloaded?']
+ ];
+ const [title,how,question]=objectives[stageNumber]||objectives[0];
+ panel.append(makeNode('p','STEP '+(stageNumber+1)+' — '+title),makeNode('p',how));
+ const source=academyExecutionActivities(id);
+ const currentActivity=activity||source[0];
+ if(currentActivity){
+  panel.append(makeNode('p','SOURCE ACTIVITY: '+currentActivity.title+' ('+(currentActivity.source||'Academy')+').'));
+  const table=(currentActivity.parts||[]).find(p=>p.type==='table'&&p.rows?.length>1);
+  if(table){
+   panel.append(makeNode('p','WHERE TO FIND THE DATA: The selection and evidence table immediately below comes from the source lesson. Read the column headings first; the values shown are instructions or examples, not verified SAP records.'));
+   const wrap=document.createElement('div');wrap.style.overflowX='auto';const t=document.createElement('table');t.style.cssText='width:100%;border-collapse:collapse;font-size:13px;background:white';
+   table.rows.slice(0,8).forEach((row,i)=>{const tr=document.createElement('tr');row.forEach(cell=>{const td=document.createElement(i?'td':'th');td.textContent=String(cell);td.style.cssText='border:1px solid #c3d5e7;padding:7px;text-align:left';tr.append(td)});t.append(tr)});wrap.append(t);panel.append(wrap);
+  }else panel.append(makeNode('p','DATA LOCATION: Consult the original lesson and the activity details below. If an actual selection value, expected record or source output is missing, mark it as NOT PROVIDED and request instructor confirmation. Do not guess.'));
+ }
+ panel.append(makeNode('p','CHECK YOUR UNDERSTANDING: '+question));
+ if(window.academyTrainingMode==='simulation')panel.append(makeNode('small','SIMULATED MODE: Any displayed SAP results are fictional training examples, not live S/4HANA records.'));
+ return panel;
 }
 function updateGuide(){
  let spec=stepSpec[step];const id=(heading.textContent.match(/(?:TF|CV)-[0-9]{2}/)||[])[0]||'this module';
@@ -679,7 +708,7 @@ function updateGuide(){
   const a=steps[step];spec={title:a[0],learn:a[1],demo:a[2],task:a[3],check:a[4]};
  }
  const transaction=(document.querySelector('#sapSimulationLab')?.textContent||'').match(/(?:NWBC|SUIM|SE16N|SM37|STMS|SM51|SM59|DBACOCKPIT|FAGLL03|RZ11|OB52|OB28)/)?.[0]||'the transaction listed in this module';
- instruction.replaceChildren(makeNode('p','TRAINING ENVIRONMENT: '+(window.academyTrainingMode==='simulation'?'SAP Simulation — no SAP login; fictional evidence only':'SAP Hands-On — use your authorised external SAP training system')+'. The training version is assigned to your account by the Academy administrator.'),makeNode('h3','1. Learn — '+spec.title),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),((step===1||step===4)?academyNavigationPanel(id,step===4?'conclude':'execute'):makeNode('p',step<1?'The detailed SAP activity guide opens in Stage 2.':step===5?'Your workpaper is ready for final review and submission.':'Use the workpaper fields below to document the results of Stage 2.')),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
+ instruction.replaceChildren(makeNode('p','TRAINING ENVIRONMENT: '+(window.academyTrainingMode==='simulation'?'SAP Simulation — no SAP login; fictional evidence only':'SAP Hands-On — use your authorised external SAP training system')+'. The training version is assigned to your account by the Academy administrator.'),makeNode('h3','1. Learn — '+spec.title),academyCoachingPanel(id,step),makeNode('p',spec.learn),makeNode('h4','2. Demonstration'),((step===1||step===4)?academyNavigationPanel(id,step===4?'conclude':'execute'):makeNode('p',step<1?'The detailed SAP activity guide opens in Stage 2.':step===5?'Your workpaper is ready for final review and submission.':'Use the workpaper fields below to document the results of Stage 2.')),makeNode('p',step===2?spec.demo.replace('EV-TF01-01', 'EV-'+id.replace('-','')+'-01').replace('NWBC',transaction):spec.demo));
  exercise.replaceChildren(makeNode('h4','3. Your exercise'),makeNode('p',spec.task),makeNode('h4','4. Completion check'),makeNode('p',spec.check));
 }
 function tag(){
